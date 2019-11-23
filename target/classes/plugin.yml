@@ -1,0 +1,35 @@
+name: test
+main: minecraft.plugin.Test
+version: 1.0
+author: land00000
+commands:
+    basic:
+      description: This is a demo command.
+      usage: /<command>
+      permission: testplug.basic
+      permission-message: You don't have <permission>
+    set:
+       description: This is a demo command.
+       usage: /<command>
+       permission: testplug.set
+       permission-message: You don't have <permission>
+    get:
+       description: This is a demo command.
+       usage: /<command>
+       permission: testplug.get
+       permission-message: You don't have <permission>
+    $:
+       description: This is a demo command.
+       usage: /<command>
+       permission: testplug.trade
+       permission-message: You don't have <permission>
+    buy:
+       description: This is a demo command.
+       usage: /<command>
+       permission: testplug.buy
+       permission-message: You don't have <permission>
+    sell:
+       description: This is a demo command.
+       usage: /<command>
+       permission: testplug.sell
+       permission-message: You don't have <permission>
