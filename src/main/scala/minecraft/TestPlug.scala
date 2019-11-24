@@ -31,38 +31,53 @@ class Minecap extends JavaPlugin{
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
     //val spark = SparkSesitem.toString + messagesion.builder().getOrCreate()
     //import spark.implicits._
-    implicit val orderbookloc = "testplug/orderbook.json"
-    def playerCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String])(implicit player:Player):Boolean ={
+    implicit val orderbookloc = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
+    def playerCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String])(implicit player:Player):String ={
       val response = cmd.getName() match {
         case "$" => {
-          val price = new ItemStack(Material.getMaterial(args(0)),args(1).toInt)
-          val item = new ItemStack(Material.getMaterial(args(2)),args(3).toInt)
-          OrderWriter.writeOrder(OrderWriter.nextid,player,price,item,args(3).toInt).toString
+          try {
+            val price = new ItemStack(Material.getMaterial(args(0).toUpperCase),args(1).toInt)
+            val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
+            val order = Order(OrderWriter.nextid,player,price,item,args(3).toInt)
+            order.toJson
+            //OrderWriter.writeOrder(order).toString
+          }catch{
+            case e:Exception =>
+            {
+              e.printStackTrace
+              return "Error:No order Placed"
+            }
+          }
+
+
         }
-        case _ => "Unrecognized command"
+        case _ => "no command"
       }
-      return true
+      return response
     }
-	 var player : Player =
+
+    var player : Player =
+      sender match{
+       case p : Player => p.asInstanceOf[Player]
+       case _ => {
+         null
+       }
+     }
+	 var response : String =
 	   sender match{
-	    case p : Player => p.asInstanceOf[Player]
-	    case _ => {
+	    case p : Player => {
+        implicit val player=p
+        playerCommand(sender,cmd,label,args)
+      }
+      case _ => {
 	      null
 	    }
 	  }
 
 
-    //player.sendMessage("isplayer")
+    player.sendMessage(response)
 
-    //val  inv = player.getInventory()
-    //val item = inv.getItemInMainHand()
-    //val test = Seq(0 to 10:_*)
 
-    //var message = test.foldLeft("")((a,c) => a + c.toString )
-    // test.forEach( (i) => {
-    //   message += i
-    // })
-    //player.sendMessage(response)
 
 
    return true;

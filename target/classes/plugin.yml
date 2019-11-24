@@ -1,35 +1,35 @@
 name: minecap
-main: minecraft.MyNewPlugin
+main: minecraft.Minecap
 version: 1.0
 author: land00000
 commands:
     basic:
       description: This is a demo command.
       usage: /<command>
-      permission: testplug.basic
+      permission: minecap.basic
       permission-message: You don't have <permission>
     set:
        description: This is a demo command.
        usage: /<command>
-       permission: testplug.set
+       permission: minecap.set
        permission-message: You don't have <permission>
     get:
        description: This is a demo command.
        usage: /<command>
-       permission: testplug.get
+       permission: minecap.get
        permission-message: You don't have <permission>
     $:
        description: This is a demo command.
        usage: /<command>
-       permission: testplug.trade
+       permission: minecap.trade
        permission-message: You don't have <permission>
     buy:
        description: This is a demo command.
        usage: /<command>
-       permission: testplug.buy
+       permission: minecap.buy
        permission-message: You don't have <permission>
     sell:
        description: This is a demo command.
        usage: /<command>
-       permission: testplug.sell
+       permission: minecap.sell
        permission-message: You don't have <permission>

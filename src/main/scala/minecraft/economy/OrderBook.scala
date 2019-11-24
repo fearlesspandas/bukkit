@@ -28,6 +28,7 @@ object OrderWriter {
     nextId-1
   }
   def writeOrder(order: Order)(implicit loc:String){
+    println("ORDERLOC=" + loc)
     val pw = new PrintWriter(new File(loc))
     pw.write(order.toJson)
     pw.close
@@ -37,13 +38,14 @@ object OrderWriter {
   }
   def readOrderBook(loc:String): OrderBook = {
     val fr = new FileReader(new File(loc))
-    (new Gson).fromJson(fr,classOf[OrderBook])
+    val orderarr = (new Gson).fromJson(fr,classOf[Array[Order]])
+    OrderBook(orderarr:_*)
   }
 
 
 }
 case class Order(orderid:Int,player:Player, price:ItemStack,item: ItemStack,remaining: Int) {
-  def toJson() = (new Gson).toJson(this)
+  def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName() + ",price:"+ price.getType().getKey().getKey() + ",item:" + item.getType().getKey().getKey() + ",remaining" + remaining + "}"//(new Gson).toJson(this)
 }
 
 
