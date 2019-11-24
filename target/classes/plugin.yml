@@ -1,4 +1,4 @@
-name: test
+name: minecap
 main: minecraft.MyNewPlugin
 version: 1.0
 author: land00000
