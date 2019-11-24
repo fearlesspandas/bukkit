@@ -1,6 +1,9 @@
 package minecraft;
 
+import java.util.List
 import scala.collection.JavaConverters._
+import collection.mutable._
+
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.Command;
@@ -28,19 +31,41 @@ class Minecap extends JavaPlugin{
 		getLogger().info("onDisable has been invoked!");
 	}
 
+  override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
+      val response = cmd.getName() match {
+        case "$" => {
+            args.size match {
+              case 1 => {
+                val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+                res.map( i => i.toString).toBuffer.asJava
+                }
+              case 3 =>{
+                val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(2).toUpperCase()) )
+                res.map( i => i.toString).toBuffer.asJava
+              }
+              case _ => Array("<amount>").toBuffer.asJava
+            }
+        }
+        case _ => Array[String]().toBuffer.asJava
+    }
+    return response
+  }
+
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
     //val spark = SparkSesitem.toString + messagesion.builder().getOrCreate()
     //import spark.implicits._
-    implicit val orderbookloc = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
+    val orderbookloc_ = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
+    implicit val orderbookloc = orderbookloc_
     def playerCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String])(implicit player:Player):String ={
       val response = cmd.getName() match {
         case "$" => {
           try {
             val price = new ItemStack(Material.getMaterial(args(0).toUpperCase),args(1).toInt)
             val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
-            val order = Order(OrderWriter.nextid,player,price,item,args(3).toInt)
-            order.toJson
-            //OrderWriter.writeOrder(order).toString
+            val order = Order(OrderIO.nextid,player,price,item,args(3).toInt)
+            //order.toJson
+            OrderIO.writeOrder(order)
+            return "Successfully placed order:" + order.toJson
           }catch{
             case e:Exception =>
             {
@@ -51,7 +76,14 @@ class Minecap extends JavaPlugin{
 
 
         }
-        case _ => "no command"
+        case "buy" => {
+          val orderbook = OrderIO.readOrderBook(orderbookloc_)
+          val item = new ItemStack(Material.getMaterial(args(0).toUpperCase),1)
+          //val amount = args(1).toInt
+          val matchingorders = orderbook.orders.filter(o => o.item.getType() == item.getType())
+          matchingorders.map(order => order.toJson).foldLeft("")( (a,c) => a + c)
+        }
+        case _ => "no matching command"
       }
       return response
     }
