@@ -1,5 +1,5 @@
 name: test
-main: minecraft.plugin.Test
+main: minecraft.MyNewPlugin
 version: 1.0
 author: land00000
 commands:

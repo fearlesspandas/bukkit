@@ -16,7 +16,9 @@ import org.bukkit.entity.Player;
  import org.bukkit.inventory.ItemStack;
 
 
-class MyNewPlugin extends JavaPlugin{
+//import org.apache.spark.sql._
+
+class Minecap extends JavaPlugin{
 
   override def onEnable() {
 		getLogger().info("onEnable has been invoked!");
@@ -26,8 +28,10 @@ class MyNewPlugin extends JavaPlugin{
 		getLogger().info("onDisable has been invoked!");
 	}
 
-	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
 
+	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
+    //val spark = SparkSesitem.toString + messagesion.builder().getOrCreate()
+    //import spark.implicits._
 	 var player : Player =
 	   sender match{
 	    case p : Player => p.asInstanceOf[Player]
@@ -36,24 +40,21 @@ class MyNewPlugin extends JavaPlugin{
 	    }
 	  }
 
-    player.sendMessage("isplayer")
+    //player.sendMessage("isplayer")
+    val response = cmd.getCommandName() match {
+      case "$" => "place order"//placeOrder(price:ItemStack, item:ItemStack)
+      case _ => "Unrecognized command"
+    }
+    //val  inv = player.getInventory()
+    //val item = inv.getItemInMainHand()
+    //val test = Seq(0 to 10:_*)
 
-    val  inv = player.getInventory()
-    val item = inv.getItemInMainHand()
-    val test = Seq(0 to 10:_*)
-
-    var message = test.foldLeft("")((a,c) => a + c.toString )
+    //var message = test.foldLeft("")((a,c) => a + c.toString )
     // test.forEach( (i) => {
     //   message += i
     // })
-    player.sendMessage(item.toString + message)
-   // if (cmd.getName().equalsIgnoreCase("basic")) { // If the player typed /basic then do the following, note: If you only registered this executor for one command, you don't need this
-   //   sender.sendMessage("WARNING:THIS SHIT'S GONNA BLOW:");
-   //   //val m = args.foldLeft("")( (a,c)=> a + " , " + c)
-   //   //val t = args(0)
-   //   //sender.sendMessage(t)
-   //   return true;
-   // }
+    player.sendMessage(response)
+
 
    return true;
 	}
