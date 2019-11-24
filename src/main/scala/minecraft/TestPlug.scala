@@ -46,6 +46,24 @@ class Minecap extends JavaPlugin{
               case _ => Array("<amount>").toBuffer.asJava
             }
         }
+        case "buy" => {
+          args.size match{
+            case 1 => {
+              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              res.map( i => i.toString).toBuffer.asJava
+            }
+            case _ => Array[String]().toBuffer.asJava
+          }
+        }
+        case "sell" => {
+          args.size match{
+            case 1 => {
+              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              res.map( i => i.toString).toBuffer.asJava
+            }
+            case _ => Array[String]().toBuffer.asJava
+          }
+        }
         case _ => Array[String]().toBuffer.asJava
     }
     return response
@@ -81,7 +99,14 @@ class Minecap extends JavaPlugin{
           val item = new ItemStack(Material.getMaterial(args(0).toUpperCase),1)
           //val amount = args(1).toInt
           val matchingorders = orderbook.orders.filter(o => o.item.getType() == item.getType())
-          matchingorders.map(order => order.toJson).foldLeft("")( (a,c) => a + c)
+          matchingorders.map(order => order.price.getType().toString() + ":" + order.price.getAmount() +  ":" + order.player.getPlayerListName() +  "\n").foldLeft("")( (a,c) => a + c )
+        }
+        case "sell" => {
+          val orderbook = OrderIO.readOrderBook(orderbookloc_)
+          val item = new ItemStack(Material.getMaterial(args(0).toUpperCase),1)
+          //val amount = args(1).toInt
+          val matchingorders = orderbook.orders.filter(o => o.price.getType() == item.getType())
+          matchingorders.map(order => order.item.getType().toString() + ":" + order.item.getAmount() +  ":" + order.player.getPlayerListName() + "\n").foldLeft("")( (a,c) => a + c )
         }
         case _ => "no matching command"
       }
