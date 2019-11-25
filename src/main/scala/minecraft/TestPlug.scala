@@ -19,6 +19,7 @@ import org.bukkit.inventory.ItemStack;
 
 
 import minecraft.economy._
+import minecraft.constants._
 //import org.apache.spark.sql._
 
 class Minecap extends JavaPlugin{
@@ -72,15 +73,16 @@ class Minecap extends JavaPlugin{
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
     //val spark = SparkSesitem.toString + messagesion.builder().getOrCreate()
     //import spark.implicits._
-    val orderbookloc_ = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
-    implicit val orderbookloc = orderbookloc_
+    //val orderbookloc_ = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
+    //implicit val orderbookloc = orderbookloc_
+    import OrderBookConstants._
     def playerCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String])(implicit player:Player):String ={
       val response = cmd.getName() match {
         case "$" => {
           try {
-            val price = new ItemStack(Material.getMaterial(args(0).toUpperCase),args(1).toInt)
+            val price = Material.getMaterial(args(0).toUpperCase)
             val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
-            val order = Order(OrderIO.nextid,player,price,item,args(3).toInt)
+            val order = Order(OrderIO.nextid,player,price,item,args(3))
             //order.toJson
             OrderIO.writeOrder(order)
             return "Successfully placed order:" + order.toJson
@@ -91,22 +93,32 @@ class Minecap extends JavaPlugin{
               return "Error:No order Placed"
             }
           }
-
-
         }
         case "buy" => {
-          val orderbook = OrderIO.readOrderBook(orderbookloc_)
-          val item = new ItemStack(Material.getMaterial(args(0).toUpperCase),1)
-          //val amount = args(1).toInt
-          val matchingorders = orderbook.orders.filter(o => o.item.getType() == item.getType())
-          matchingorders.map(order => order.price.getType().toString() + ":" + order.price.getAmount() +  ":" + order.player.getPlayerListName() +  "\n").foldLeft("")( (a,c) => a + c )
+          try{
+            val material = new ItemStack(Material.getMaterial(args(0).toUpperCase),args(1).toInt)
+            val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
+            (0 until material.getAmount()).foreach(i=> OrderIO.writeOrder(Order(OrderIO.nextid,player,material.getType(),item,"BUY")))
+            return "Successfully Placed Order"
+          }catch {
+            case e:Exception =>{
+              e.printStackTrace
+              return "Something went wrong, order not placed"
+            }
+          }
         }
         case "sell" => {
-          val orderbook = OrderIO.readOrderBook(orderbookloc_)
-          val item = new ItemStack(Material.getMaterial(args(0).toUpperCase),1)
-          //val amount = args(1).toInt
-          val matchingorders = orderbook.orders.filter(o => o.price.getType() == item.getType())
-          matchingorders.map(order => order.item.getType().toString() + ":" + order.item.getAmount() +  ":" + order.player.getPlayerListName() + "\n").foldLeft("")( (a,c) => a + c )
+          try {
+            val material = new ItemStack(Material.getMaterial(args(0).toUpperCase),args(1).toInt)
+            val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
+            (0 until material.getAmount()).foreach(i=> OrderIO.writeOrder(Order(OrderIO.nextid,player,material.getType(),item,"SELL")))
+            return "Successfully Placed Order"
+          }catch {
+            case e:Exception =>{
+              e.printStackTrace
+              return "Something went wrong, order not placed"
+            }
+          }
         }
         case _ => "no matching command"
       }
