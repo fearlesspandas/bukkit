@@ -20,12 +20,6 @@ import scala.io.Source
 
 import minecraft.constants._
 
-//
-// import org.bukkit.inventory.Packet250CustomPayload;
-// import org.bukkit.inventory.Packet100OpenWindow;
-// import org.bukkit.inventory.MerchantRecipeList;
-// import org.bukkit.inventory.MerchantRecipe;
-
 
 object OrderIO {
   var nextId = 0
@@ -36,7 +30,6 @@ object OrderIO {
     lastid + 1
   }
   def writeOrder(order: Order)(implicit loc:String){
-    println("ORDERLOC=" + loc)
     val fw = new FileWriter(loc,true)
     fw.write(order.toJson + "\n")
     fw.close
@@ -46,12 +39,12 @@ object OrderIO {
   }
   def readOrderBook(loc:String): OrderBook = {
     val ordersraw= Source.fromFile(loc).getLines.toArray
-    val ordermap = HashMap[Order,PlayerOrder]()
+    val ordermap = HashMap[PlayerOrder,Order]()
     val orderarr =ordersraw.foreach(i => {
       val order = Order.deserialize(i)
-      ordermap.put(order,PlayerOrderJson(i).fromJson)
+      ordermap.put(PlayerOrderJson(i).fromJson,order)
     })
-    val orderbookfunc = (o:Order) => ordermap.getOrElse(o,null)
+    val orderbookfunc = (po:PlayerOrder) => ordermap.getOrElse(po,null)
     OrderBook(orderbookfunc)
   }
   def readOrders(loc:String): List[Order] = {
@@ -78,15 +71,16 @@ object OrderIO {
     }
   }
   def playerOrder(p:Player, u:UnitOrder): PlayerOrder = {
-    val playerOrderMap = (t:Player) => if (t == p) u else null
+    val playerOrderMap = (t:UnitOrder) => if (t == u) p else null
     PlayerOrder(playerOrderMap)
   }
   def playerOrder(p:Player, m:Material,i:ItemStack,buyOrSell:String): PlayerOrder = {
-    val playerOrderMap = (t:Player) => if (t == p) unitOrder(m,i,buyOrSell) else null
+    val u = unitOrder(m,i,buyOrSell)
+    val playerOrderMap = (t:UnitOrder) => if (t == u) p  else null
     PlayerOrder(playerOrderMap)
   }
   def filledOrder(p:Player, po:PlayerOrder) : FilledOrder ={
-    val filledOrderMap = (t:Player) => if (t == p) po else null
+    val filledOrderMap = (t:PlayerOrder) => if (t == po) p else null
     FilledOrder(filledOrderMap)
   }
   def playerMultiOrder(p:Player,u:UnitOrder,quantity:Int): List[PlayerOrder] = {
@@ -135,10 +129,10 @@ trait UnitOrder
      return null//FlatJson(str).str.
    }
  }
- case class PlayerOrder(f:Player => UnitOrder){
+ case class PlayerOrder(f:UnitOrder => Player){
 
  }
- case class FilledOrder( f:Player => PlayerOrder)
+ case class FilledOrder( f: PlayerOrder => Player)
 
 
 
@@ -162,5 +156,23 @@ object Order {
   }
 }
 
-case class OrderBook(f: Order => PlayerOrder){
+case class OrderBook(f: PlayerOrder => Order){
+}
+
+case class OrderMatch(f:UnitBuy,g:UnitSell,tradedMaterial:Material){
+  // def funcMatch[A,B](func:A)(implicit tag: TypeTag[A],tagb:TypeTag[B]) = {
+  //   val testtag = typeTag[B=>B]
+  //   val functag = typeTag[A]
+  //   if( testtag.tpe == functag.tpe) true else false
+  // }
+  // def funcWrapper(): Boolean{
+  //   try{
+  //     funcMatch[ItemStack=>ItemStack,ItemStack](g.f.compose(f.f))
+  //   }catch{
+  //     e:Exception => false
+  //   }
+  // }
+  require(g.f(f.f(tradedMaterial)) == tradedMaterial) //check if the composition of the two order functions produces identity
+
+
 }

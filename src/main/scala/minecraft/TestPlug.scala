@@ -71,21 +71,31 @@ class Minecap extends JavaPlugin{
   }
 
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
-    //val spark = SparkSesitem.toString + messagesion.builder().getOrCreate()
-    //import spark.implicits._
-    //val orderbookloc_ = "/Users/minecraft/Public/minecraft-server/plugins/testplug/orders.json"
-    //implicit val orderbookloc = orderbookloc_
     import OrderBookConstants._
-    def playerCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String])(implicit player:Player):String ={
+    def playerCommand(player: Player, cmd : Command, label : String, args : Array[String]):String ={
       val response = cmd.getName() match {
         case "$" => {
           try {
-            val price = Material.getMaterial(args(0).toUpperCase)
-            val item = new ItemStack(Material.getMaterial(args(2).toUpperCase),args(3).toInt)
-            val order = Order(OrderIO.nextid,player,price,item,args(3))
-            //order.toJson
+            val orderarr = args(0).split("=>")
+            val buyOrSell = if (orderarr(0).contains("@")) "BUY" else if (orderarr(1).contains("@")) "SELL" else null
+            val itemquantity = buyOrSell match {
+              case "BUY" => orderarr(0).split("@")(0).toInt
+              case "SELL" => orderarr(1).split("@")(0).toInt
+            }
+            val itemmaterial = buyOrSell match {
+              case "BUY" =>  Material.getMaterial(orderarr(0).split("@")(1).toUpperCase)
+              case "SELL" => Material.getMaterial(orderarr(1).split("@")(1).toUpperCase)
+            }
+            val unitmaterial = buyOrSell match {
+              case "BUY" => Material.getMaterial(orderarr(1).toUpperCase)
+              case "SELL" => Material.getMaterial(orderarr(0).toUpperCase)
+            }
+            val order = buyOrSell match {
+              case "BUY" => Order(OrderIO.nextid,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"BUY")
+              case "SELL" => Order(OrderIO.nextid,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"SELL")
+            }
             OrderIO.writeOrder(order)
-            return "Successfully placed order:" + order.toJson
+            return "Successfully placed order" //+ order.toJson
           }catch{
             case e:Exception =>
             {
@@ -124,19 +134,11 @@ class Minecap extends JavaPlugin{
       }
       return response
     }
-
-    var player : Player =
-      sender match{
-       case p : Player => p.asInstanceOf[Player]
-       case _ => {
-         null
-       }
-     }
 	 var response : String =
 	   sender match{
 	    case p : Player => {
         implicit val player=p
-        playerCommand(sender,cmd,label,args)
+        playerCommand(p,cmd,label,args)
       }
       case _ => {
 	      null
@@ -144,11 +146,7 @@ class Minecap extends JavaPlugin{
 	  }
 
 
-    player.sendMessage(response)
-
-
-
-
+    sender.sendMessage(response)
    return true;
 	}
 }
