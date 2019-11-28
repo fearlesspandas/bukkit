@@ -33,3 +33,8 @@ commands:
        usage: /<command>
        permission: minecap.sell
        permission-message: You don't have <permission>
+    swap:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.swap
+       permission-message: You don't have <permission>

@@ -37,25 +37,36 @@ object OrderIO {
   def writeOrder(orderid:Int,player: Player, price: Material,item: ItemStack,buyOrSell:String)(implicit loc :String){
     writeOrder(Order(orderid,player,price,item,buyOrSell))
   }
-  def readOrderBook(loc:String): OrderBook = {
+  def readOrderBook(implicit loc:String): OrderBook = {
     val ordersraw= Source.fromFile(loc).getLines.toArray
-    val ordermap = HashMap[PlayerOrder,Order]()
-    val orderarr =ordersraw.foreach(i => {
-      val order = Order.deserialize(i)
-      ordermap.put(PlayerOrderJson(i).fromJson,order)
-    })
-    val orderbookfunc = (po:PlayerOrder) => ordermap.getOrElse(po,null)
+    val ordermap = HashMap[Int,Order]()
+    val orderList = ordersraw.map(i => Order.fromJson(i))
+    orderList.foreach( order => ordermap.put(order.orderid,order))
+    val orderbookfunc = (po:PlayerOrder) => ordermap.getOrElse(po.id,null)
     OrderBook(orderbookfunc)
   }
-  def readOrders(loc:String): List[Order] = {
+  def swapOrderBook(orderbook:OrderBook)(implicit loc:String): String = {
+    try{
+      val replacementtext = orderbook.toJsonString
+      val fw = new FileWriter(loc)
+      fw.write(replacementtext)
+      fw.close()
+      return "Calling from swapbook\n" + replacementtext
+    }catch{
+      case e:Exception => {
+        e.printStackTrace
+        return false.toString
+      }
+    }
+  }
+  def readOrders(implicit loc:String): List[Order] = {
     val ordersraw= Source.fromFile(loc).getLines.toArray
     //val ordermap = HashMap[Order,PlayerOrder]()
     val orderarr =ordersraw.map(i => {
-      Order.deserialize(i)
+      Order.fromJson(i)
     })
     orderarr.toList
   }
-
   def unitOrder(m:Material, i:ItemStack,buyOrSell:String):UnitOrder = {
     buyOrSell.toUpperCase match {
       case "BUY" =>
@@ -64,40 +75,43 @@ object OrderIO {
         UnitBuy(ordermap)
       }
       case "SELL" => {
-        val ordermap = (t:ItemStack) => if(t == i) m else null
+        val ordermap = (t:ItemStack) => if(t.getAmount() >= i.getAmount()) m else null
         UnitSell(ordermap)
       }
       case _ => null
     }
   }
-  def playerOrder(p:Player, u:UnitOrder): PlayerOrder = {
-    val playerOrderMap = (t:UnitOrder) => if (t == u) p else null
-    PlayerOrder(playerOrderMap)
-  }
-  def playerOrder(p:Player, m:Material,i:ItemStack,buyOrSell:String): PlayerOrder = {
+  // def playerOrder(p:Player, u:UnitOrder): PlayerOrder = {
+  //   val playerOrderMap = (t:UnitOrder) => if (t == u) p else null
+  //   PlayerOrder(playerOrderMap)
+  // }
+  def playerOrder(p:Player, m:Material,i:ItemStack,buyOrSell:String,orderid:Int): PlayerOrder = {
     val u = unitOrder(m,i,buyOrSell)
-    val playerOrderMap = (t:UnitOrder) => if (t == u) p  else null
-    PlayerOrder(playerOrderMap)
+    val playerOrderMap = buyOrSell match{
+        case "SELL" => (t:UnitOrder) => if (t.asInstanceOf[UnitSell].f(i) == m) p  else null
+        case "BUY" => (t:UnitOrder) => if (t.asInstanceOf[UnitBuy].f(m).getType() == i.getType() && t.asInstanceOf[UnitBuy].f(m).getAmount() == i.getAmount()) p  else null
+    }
+    PlayerOrder(playerOrderMap,orderid)
   }
   def filledOrder(p:Player, po:PlayerOrder) : FilledOrder ={
     val filledOrderMap = (t:PlayerOrder) => if (t == po) p else null
     FilledOrder(filledOrderMap)
   }
-  def playerMultiOrder(p:Player,u:UnitOrder,quantity:Int): List[PlayerOrder] = {
-    (0 until quantity).map(i => playerOrder(p,u)).toList
-  }
-  def playerMultiOrder(p:Player,m:Material,i:ItemStack,quantity:Int,buyOrSell:String): List[PlayerOrder] = {
-    playerMultiOrder(p,unitOrder(m,i,buyOrSell),quantity)
-  }
+  // def playerMultiOrder(p:Player,u:UnitOrder,quantity:Int): List[PlayerOrder] = {
+  //   (0 until quantity).map(i => playerOrder(p,u)).toList
+  // }
+  // def playerMultiOrder(p:Player,m:Material,i:ItemStack,quantity:Int,buyOrSell:String): List[PlayerOrder] = {
+  //   playerMultiOrder(p,unitOrder(m,i,buyOrSell),quantity)
+  // }
 
 }
 
 abstract class FlatJson[A]{
-  //require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
-  //require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
-  def fromJson(): A
+    //require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
+    //require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
+    def fromJson(): A
 }
-  case class PlayerOrderJson(str:String) extends FlatJson[PlayerOrder] {
+case class PlayerOrderJson(str:String) extends FlatJson[PlayerOrder] {
     require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
     require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
     def fromJson(): PlayerOrder = {
@@ -111,15 +125,17 @@ abstract class FlatJson[A]{
       val player = server.getPlayer(fieldmap.getOrElse("player",""))
       val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
       val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
-      val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("quantity","0").toInt)
+      val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("amount","0").toInt)
       val buyOrSell = fieldmap.getOrElse("buyOrSell","")
-      OrderIO.playerOrder(player,material,itemstack,buyOrSell)
+      val orderid = fieldmap.getOrElse("orderid","-1").toInt
+      OrderIO.playerOrder(player,material,itemstack,buyOrSell,orderid)
     }
   }
 
 trait UnitOrder
  case class UnitBuy( f: (Material) => ItemStack ) extends UnitOrder{
    val value = (m:Material) => f(m)
+   def flatMap(f:(Material=>ItemStack) => (Material=>ItemStack) ) = null
  }
  case class UnitSell( f: (ItemStack) => Material ) extends UnitOrder{
    val value = (i:ItemStack) => f(i)
@@ -129,50 +145,76 @@ trait UnitOrder
      return null//FlatJson(str).str.
    }
  }
- case class PlayerOrder(f:UnitOrder => Player){
-
+ case class PlayerOrder(f:UnitOrder => Player,i_d:Int = -1){
+   val id = if(i_d == -1) OrderIO.nextid else i_d
+   require(id > 0,"Playerorder id less than zero")
  }
+ //case class PlayerOrder(id:Int)
  case class FilledOrder( f: PlayerOrder => Player)
 
 
 
 
  case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) {
-  def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName()  + ",material:"+ material + ",item:" + item.getType()+"\u0001"+item.getAmount() + ",buyOrSell:" + buyOrSell + "}"//(new Gson).toJson(this)
-
+  //def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName()  + ",material:"+ material + ",item:" + item.getType()+"\u0001"+item.getAmount() + ",buyOrSell:" + buyOrSell + "}"//(new Gson).toJson(this)
+  def toJson() = {
+    val fieldmap = new HashMap[String,String]()
+    fieldmap.put("orderid",orderid.toString)
+    fieldmap.put("player",player.getPlayerListName())
+    fieldmap.put("material",material.toString())
+    fieldmap.put("item",item.getType().toString)
+    fieldmap.put("amount",item.getAmount().toString)
+    fieldmap.put("buyOrSell",buyOrSell)
+    fieldmap.keySet.toStream.foldLeft("{orderid:" + orderid.toString)( (a,c) => if (c!= "orderid") a + "," + c + ":" + fieldmap.getOrElse(c,"") else a+ "" ) + "}"
+  }
+  def toUnitOrder() = OrderIO.unitOrder(material,item,buyOrSell)
+  //def fromJson(str:String):PlayerOrder = new PlayerOrderJson(str).fromJson
+  //def toPlayerOrder():PlayerOrder = fromJson(toJson) //probably fix this
 }
 
 object Order {
-  def deserialize(raw: String): Order = {
+  def fromJson(str:String): Order = {
+    val fields = if (str.count(i=> i == ',') > 0) str.replace("{","").replace("}","").split(",") else Array(str.replace("{","").replace("}",""))
+    val fieldmap = HashMap[String,String]()
+    fields.foreach( i => {
+      val j = i.split(":")
+      fieldmap.put(j(0),j(1))
+    })
     val server = Bukkit.getServer()
-    val fields = raw.replace("{","").replace("}","").split(",")
-    val args = fields.map(f => f.split(":"))
-    val orderid = args(0)(1).toInt
-    val player = server.getPlayer(args(1)(1))
-    val price = Material.getMaterial(args(2)(1).split("\u0001")(0))
-    val item = new ItemStack(Material.getMaterial(args(3)(1).split("\u0001")(0)),args(3)(1).split("\u0001")(1).toInt)
-    val buyOrSell = args(4)(1)
-    Order(orderid,player,price,item,buyOrSell)
+    val player = server.getPlayer(fieldmap.getOrElse("player",""))
+    val orderid = fieldmap.getOrElse("orderid","0").toInt
+    val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
+    val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
+    val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("amount",null).toInt)
+    val buyOrSell = fieldmap.getOrElse("buyOrSell","")
+    Order(orderid,player,material,itemstack,buyOrSell)
   }
 }
 
-case class OrderBook(f: PlayerOrder => Order){
+case class OrderBook(f:PlayerOrder => Order){
+  import minecraft.constants.OrderBookConstants._
+
+  def toJsonString(implicit loc:String): String={
+    //replace current order book with playerorders
+    //mapped through this.f
+    val oldorderbook = OrderIO.readOrders(loc).map(o => PlayerOrderJson(o.toJson).fromJson)
+    oldorderbook.map(playerorder => f(playerorder)).filter(order => order != null).foldLeft("")( (a,c) => a + c.toJson + "\n")
+  }
 }
 
+case class OrderPrice(f:UnitBuy,g:UnitSell,tradingprice: ItemStack){
+  require(f.f(g.f(tradingprice)) == tradingprice) //check if the composition of the two order functions produces identity
+}
 case class OrderMatch(f:UnitBuy,g:UnitSell,tradedMaterial:Material){
-  // def funcMatch[A,B](func:A)(implicit tag: TypeTag[A],tagb:TypeTag[B]) = {
-  //   val testtag = typeTag[B=>B]
-  //   val functag = typeTag[A]
-  //   if( testtag.tpe == functag.tpe) true else false
-  // }
-  // def funcWrapper(): Boolean{
-  //   try{
-  //     funcMatch[ItemStack=>ItemStack,ItemStack](g.f.compose(f.f))
-  //   }catch{
-  //     e:Exception => false
-  //   }
-  // }
   require(g.f(f.f(tradedMaterial)) == tradedMaterial) //check if the composition of the two order functions produces identity
+}
 
-
+object OrderMatch{
+  import minecraft.constants.OrderBookConstants._
+  private def fillOrder(pof:PlayerOrder,pog:PlayerOrder,ordermatch:OrderMatch)(implicit orderbookloc:String):OrderBook = {
+    require(pof.f(ordermatch.f) != null && pog.f(ordermatch.g) != null)
+    val orderbook = OrderIO.readOrderBook(orderbookloc)
+    val validorders = (i:PlayerOrder ) => if (i != pof || i != pog) orderbook.f(i) else null
+    OrderBook(validorders)
+  }
 }
