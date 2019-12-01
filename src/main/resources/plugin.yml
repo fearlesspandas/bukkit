@@ -3,21 +3,6 @@ main: minecraft.Minecap
 version: 1.0
 author: land00000
 commands:
-    basic:
-      description: This is a demo command.
-      usage: /<command>
-      permission: minecap.basic
-      permission-message: You don't have <permission>
-    set:
-       description: This is a demo command.
-       usage: /<command>
-       permission: minecap.set
-       permission-message: You don't have <permission>
-    get:
-       description: This is a demo command.
-       usage: /<command>
-       permission: minecap.get
-       permission-message: You don't have <permission>
     $:
        description: This is a demo command.
        usage: /<command>
@@ -32,11 +17,6 @@ commands:
        description: This is a demo command.
        usage: /<command>
        permission: minecap.sell
-       permission-message: You don't have <permission>
-    swap:
-       description: This is a demo command.
-       usage: /<command>
-       permission: minecap.swap
        permission-message: You don't have <permission>
     claim:
        description: This is a demo command.

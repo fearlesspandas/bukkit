@@ -261,7 +261,7 @@ object OrderMatch{
   def orderMatch(a:Order,b:Order) = {
     a.item.getType() == b.item.getType() && a.item.getAmount() == b.item.getAmount() && a.material == b.material && a.buyOrSell != b.buyOrSell //&& a.player.getPlayerListName != b.player.getPlayerListName()
   }
-  def findOrder(order:Order,rplc_orderbook:OrderBook = null)(implicit orderbookloc:String):Order =  {
+  def findOrder(order:Order,rplc_orderbook:OrderBook = null)(implicit orderbookloc:String):List[Order] =  {
     val orderbook = if (rplc_orderbook != null) rplc_orderbook else OrderIO.readOrderBook(orderbookloc)
     val orderlist = if (rplc_orderbook != null) rplc_orderbook.toList else OrderIO.readOrders(orderbookloc)
     //list or OrderMatch's
@@ -276,6 +276,6 @@ object OrderMatch{
           }
         }
     }).filter(o => o != null)
-    if (matchingorders.size > 0) return matchingorders(0) else null
+    return matchingorders
   }
 }
