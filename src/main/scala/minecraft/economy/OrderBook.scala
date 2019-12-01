@@ -12,7 +12,7 @@ import org.bukkit.Bukkit;
 import com.google.gson.Gson
 
 import java.io._
-
+import java.util.UUID
 import scala.reflect.runtime.universe._
 import scala.reflect.ClassTag
 import scala.collection.mutable.HashMap
@@ -23,48 +23,56 @@ import minecraft.constants._
 
 object OrderIO {
   var nextId = 0
-  def nextid: Int = {
+  def nextid: Int =  {
     import OrderBookConstants._
     val orderbook = readOrders(orderbookloc_)
-    val lastid = orderbook.foldLeft(0)((a,c) => scala.math.max(a,c.orderid))
+    val lastid = orderbook.foldLeft(-1)((a,c) => scala.math.max(a,c.orderid))
     lastid + 1
   }
-  def writeOrder(order: Order)(implicit loc:String){
-    val fw = new FileWriter(loc,true)
-    fw.write(order.toJson + "\n")
-    fw.close
+  def writeOrder(order: Order)(implicit loc:String):Boolean= {
+    try{
+      val fw = new FileWriter(loc,true)
+      fw.write(order.toJson + "\n")
+      fw.close
+      true
+    }catch{
+      case e:Exception =>{
+        e.printStackTrace
+        false
+      }
+    }
   }
-  def writeOrder(orderid:Int,player: Player, price: Material,item: ItemStack,buyOrSell:String)(implicit loc :String){
+  def writeOrder(orderid:Int,player: Player, price: Material,item: ItemStack,buyOrSell:String)(implicit loc :String): Boolean = {
     writeOrder(Order(orderid,player,price,item,buyOrSell))
   }
-  def readOrderBook(implicit loc:String): OrderBook = {
+  def readOrderBook(implicit loc:String): OrderBook =  {
     val ordersraw= Source.fromFile(loc).getLines.toArray
     val ordermap = HashMap[Int,Order]()
-    val orderList = ordersraw.map(i => Order.fromJson(i))
+    val orderList = ordersraw.map(i => Order.fromJson(i)).filter( order => order != null )
     orderList.foreach( order => ordermap.put(order.orderid,order))
     val orderbookfunc = (po:PlayerOrder) => ordermap.getOrElse(po.id,null)
     OrderBook(orderbookfunc)
   }
-  def swapOrderBook(orderbook:OrderBook)(implicit loc:String): String = {
+  def swapOrderBook(orderbook:OrderBook)(implicit loc:String): Boolean =  {
     try{
       val replacementtext = orderbook.toJsonString
       val fw = new FileWriter(loc)
       fw.write(replacementtext)
       fw.close()
-      return "Calling from swapbook\n" + replacementtext
+      return true
     }catch{
       case e:Exception => {
         e.printStackTrace
-        return false.toString
+        return false
       }
     }
   }
-  def readOrders(implicit loc:String): List[Order] = {
+  def readOrders(implicit loc:String): List[Order] =  {
     val ordersraw= Source.fromFile(loc).getLines.toArray
     //val ordermap = HashMap[Order,PlayerOrder]()
     val orderarr =ordersraw.map(i => {
       Order.fromJson(i)
-    })
+    }).filter( order => order != null )
     orderarr.toList
   }
   def unitOrder(m:Material, i:ItemStack,buyOrSell:String):UnitOrder = {
@@ -122,7 +130,7 @@ case class PlayerOrderJson(str:String) extends FlatJson[PlayerOrder] {
         fieldmap.put(j(0),j(1))
       })
       val server = Bukkit.getServer()
-      val player = server.getPlayer(fieldmap.getOrElse("player",""))
+      val player = server.getPlayer( UUID.fromString( fieldmap.getOrElse("player","") ) )
       val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
       val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
       val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("amount","0").toInt)
@@ -147,7 +155,7 @@ trait UnitOrder
  }
  case class PlayerOrder(f:UnitOrder => Player,i_d:Int = -1){
    val id = if(i_d == -1) OrderIO.nextid else i_d
-   require(id > 0,"Playerorder id less than zero")
+   require(id >= 0,"Playerorder id less than zero")
  }
  //case class PlayerOrder(id:Int)
  case class FilledOrder( f: PlayerOrder => Player)
@@ -157,10 +165,11 @@ trait UnitOrder
 
  case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) {
   //def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName()  + ",material:"+ material + ",item:" + item.getType()+"\u0001"+item.getAmount() + ",buyOrSell:" + buyOrSell + "}"//(new Gson).toJson(this)
+  require(buyOrSell == "BUY" || buyOrSell == "SELL")
   def toJson() = {
     val fieldmap = new HashMap[String,String]()
     fieldmap.put("orderid",orderid.toString)
-    fieldmap.put("player",player.getPlayerListName())
+    fieldmap.put("player",player.getUniqueId().toString)
     fieldmap.put("material",material.toString())
     fieldmap.put("item",item.getType().toString)
     fieldmap.put("amount",item.getAmount().toString)
@@ -168,26 +177,43 @@ trait UnitOrder
     fieldmap.keySet.toStream.foldLeft("{orderid:" + orderid.toString)( (a,c) => if (c!= "orderid") a + "," + c + ":" + fieldmap.getOrElse(c,"") else a+ "" ) + "}"
   }
   def toUnitOrder() = OrderIO.unitOrder(material,item,buyOrSell)
+  def toPlayerOrder() = PlayerOrderJson(toJson).fromJson
+  def toSymbol() = {
+    if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
+    else material + " => " + item.getAmount() + "@" + item.getType()
+  }
+  val filleditem = if (buyOrSell == "SELL") new ItemStack(material,1) else item
+  val escrowitem = if (buyOrSell == "SELL") item else new ItemStack(material,1)
+  //require(player.getInventory().contains(escrowitem))
   //def fromJson(str:String):PlayerOrder = new PlayerOrderJson(str).fromJson
   //def toPlayerOrder():PlayerOrder = fromJson(toJson) //probably fix this
 }
 
 object Order {
   def fromJson(str:String): Order = {
-    val fields = if (str.count(i=> i == ',') > 0) str.replace("{","").replace("}","").split(",") else Array(str.replace("{","").replace("}",""))
-    val fieldmap = HashMap[String,String]()
-    fields.foreach( i => {
-      val j = i.split(":")
-      fieldmap.put(j(0),j(1))
-    })
-    val server = Bukkit.getServer()
-    val player = server.getPlayer(fieldmap.getOrElse("player",""))
-    val orderid = fieldmap.getOrElse("orderid","0").toInt
-    val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
-    val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
-    val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("amount",null).toInt)
-    val buyOrSell = fieldmap.getOrElse("buyOrSell","")
-    Order(orderid,player,material,itemstack,buyOrSell)
+    try{
+      require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
+      require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
+      val fields = if (str.count(i=> i == ',') > 0) str.replace("{","").replace("}","").split(",") else Array(str.replace("{","").replace("}",""))
+      val fieldmap = HashMap[String,String]()
+      fields.foreach( i => {
+        val j = i.split(":")
+        fieldmap.put(j(0),j(1))
+      })
+      val server = Bukkit.getServer()
+      val player = server.getPlayer( UUID.fromString( fieldmap.getOrElse("player","") ) )
+      val orderid = fieldmap.getOrElse("orderid","0").toInt
+      val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
+      val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
+      val itemstack = new ItemStack(itemmaterial,fieldmap.getOrElse("amount",null).toInt)
+      val buyOrSell = fieldmap.getOrElse("buyOrSell","")
+      return Order(orderid,player,material,itemstack,buyOrSell)
+    }catch{
+      case e:Exception=>{
+        e.printStackTrace
+        return null
+      }
+    }
   }
 }
 
@@ -199,6 +225,9 @@ case class OrderBook(f:PlayerOrder => Order){
     //mapped through this.f
     val oldorderbook = OrderIO.readOrders(loc).map(o => PlayerOrderJson(o.toJson).fromJson)
     oldorderbook.map(playerorder => f(playerorder)).filter(order => order != null).foldLeft("")( (a,c) => a + c.toJson + "\n")
+  }
+  def toList(implicit loc:String ): List[Order]={
+    OrderIO.readOrders(loc).map( o => f(o.toPlayerOrder)).filter( o => o!= null)
   }
 }
 
@@ -214,7 +243,39 @@ object OrderMatch{
   private def fillOrder(pof:PlayerOrder,pog:PlayerOrder,ordermatch:OrderMatch)(implicit orderbookloc:String):OrderBook = {
     require(pof.f(ordermatch.f) != null && pog.f(ordermatch.g) != null)
     val orderbook = OrderIO.readOrderBook(orderbookloc)
-    val validorders = (i:PlayerOrder ) => if (i != pof || i != pog) orderbook.f(i) else null
+    val validorders = (i:PlayerOrder ) => if (i.id != pof.id || i.id != pog.id) orderbook.f(i) else null
     OrderBook(validorders)
+  }
+  def fillOrder(a:Order,b:Order)(implicit loc : String): OrderBook = {
+    require(orderMatch(a,b),"Orders do not match")
+    val orderbook = OrderIO.readOrderBook(loc)
+    val validorders = (po : PlayerOrder) => if(po.id == a.orderid | po.id == b.orderid) null else orderbook.f(po)
+    OrderBook(validorders)
+  }
+  def commitOrderFill(a:Order,b:Order)(implicit loc : String): Boolean =  {
+    require(orderMatch(a,b),"Orders do not match")
+    val orderbook = OrderIO.readOrderBook(loc)
+    val validorders = (po : PlayerOrder) => if(po.id == a.orderid | po.id == b.orderid) null else orderbook.f(po)
+    OrderIO.swapOrderBook(OrderBook(validorders))(loc)
+  }
+  def orderMatch(a:Order,b:Order) = {
+    a.item.getType() == b.item.getType() && a.item.getAmount() == b.item.getAmount() && a.material == b.material && a.buyOrSell != b.buyOrSell //&& a.player.getPlayerListName != b.player.getPlayerListName()
+  }
+  def findOrder(order:Order,rplc_orderbook:OrderBook = null)(implicit orderbookloc:String):Order =  {
+    val orderbook = if (rplc_orderbook != null) rplc_orderbook else OrderIO.readOrderBook(orderbookloc)
+    val orderlist = if (rplc_orderbook != null) rplc_orderbook.toList else OrderIO.readOrders(orderbookloc)
+    //list or OrderMatch's
+    val matchingorders = orderlist.map( bookorder => {
+        try{
+          //OrderMatch(order.toUnitOrder.asInstanceOf[UnitBuy],bookorder.toUnitOrder.asInstanceOf[UnitSell],order.material)
+          if(orderMatch(bookorder,order)) bookorder else null
+        }catch{
+          case e:Exception => {
+            e.printStackTrace
+            null
+          }
+        }
+    }).filter(o => o != null)
+    if (matchingorders.size > 0) return matchingorders(0) else null
   }
 }

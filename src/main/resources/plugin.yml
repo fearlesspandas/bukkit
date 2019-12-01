@@ -38,3 +38,8 @@ commands:
        usage: /<command>
        permission: minecap.swap
        permission-message: You don't have <permission>
+    claim:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.claim
+       permission-message: You don't have <permission>
