@@ -105,7 +105,8 @@ class Minecap extends JavaPlugin{
     var filledOrders = 0
     //val matchedorders = new HashMap[Order,Order]()
     val newOrders = ArrayBuffer[Order]()
-    val neworderbook= orders.foldLeft(OrderIO.readOrderBook)( (orderbook,order) => {
+    val oldorderbook = OrderIO.readOrderBook
+    val neworderbook= orders.foldLeft(oldorderbook)( (orderbook,order) => {
       val matched = OrderMatch.findOrder(order,orderbook)
       if (matched != null) {
         filledOrders +=1
@@ -116,13 +117,16 @@ class Minecap extends JavaPlugin{
         escrowIds.put(matched.player,escrowIds.getOrElse(matched.player,Array[ItemStack]()) :+ matched.filleditem)
 
         val orderbookfunc = (po:PlayerOrder) => if (po.id != matched.orderid) orderbook.f(po) else null
-        OrderBook(orderbookfunc)
+        val temporderbook = OrderBook(orderbookfunc)
+        println("------Filtered Order Book--------")
+        println(temporderbook.toJsonString)
+        temporderbook
       }else{
         //if (OrderIO.writeOrder(order)){
         newOrders += order
         orderbook
       }
-    })
+    })sdd
     if (OrderIO.swapOrderBook(neworderbook)){
       newOrders.foreach( order => {
         val buyerinventory = order.player.getInventory()
@@ -132,30 +136,7 @@ class Minecap extends JavaPlugin{
     }else{
       return "something went wrong"
     }
-    // val metrics = orders.foldLeft((0,0))( (metrics,order) => {
-    //   val matched = matchedorders.getOrElse(order,null)
-    //   //attempt to fill order before making new one
-    //   if(matched == null){
-    //     //write order and move item to escrow
-    //     OrderIO.writeOrder(order)
-    //     val buyerinventory = order.player.getInventory()
-    //     buyerinventory.removeItem(order.escrowitem)
-    //     (metrics._1,metrics._2 + 1)
-    //   }else{
-    //     //fill order and move itemfills into escrow
-    //     val success = OrderMatch.commitOrderFill(order,matched)
-    //     if(success){
-    //       val buyerinventory = order.player.getInventory()
-    //       val sellerinventory = matched.player.getInventory()
-    //       buyerinventory.removeItem(order.escrowitem)
-    //       buyerinventory.addItem(order.filleditem)
-    //       escrowIds.put(matched.player,escrowIds.getOrElse(matched.player,Array[ItemStack]()) :+ matched.filleditem)
-    //       (metrics._1 + 1,metrics._2)
-    //     }else{
-    //       metrics
-    //     }
-    //   }
-    // })
+
     return filledOrders + " Orders Filled, " + newOrders.size + "New Orders Placed"
     //return "found " + matchedorders.size.toString + " matching orders"
   }
