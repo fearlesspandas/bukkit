@@ -45,17 +45,17 @@ class Minecap extends JavaPlugin{
 
 	override def onDisable() {
 		getLogger().info("Backing up Escrow currently in memory");
-    val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
-      val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
-      val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
-        val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
-        acc + newentry
-      })
-      acc + newplayerentry
-    })
-    val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
-    fw.write(newEscrowData)
-    fw.close()
+    // val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
+    //   val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
+    //   val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
+    //     val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
+    //     acc + newentry
+    //   })
+    //   acc + newplayerentry
+    // })
+    // val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
+    // fw.write(newEscrowData)
+    // fw.close()
 	}
 
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
@@ -69,7 +69,7 @@ class Minecap extends JavaPlugin{
         case "buy" => {
           args.size match{
             case 1 => {
-              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
               res.map( i => i.toString).toBuffer.asJava
             }
             case _ => Array[String]().toBuffer.asJava
@@ -78,7 +78,7 @@ class Minecap extends JavaPlugin{
         case "sell" => {
           args.size match{
             case 1 => {
-              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
               res.map( i => i.toString).toBuffer.asJava
             }
             case _ => Array[String]().toBuffer.asJava
@@ -120,13 +120,15 @@ class Minecap extends JavaPlugin{
     val orders = parseOrder(player,args)
     if (orders.size == 0) return "No orders placed"
     val playerinv = player.getInventory()
+    //define escrow
     val escrowamount = if (orders.size > 0) orders(0).escrowitem.getAmount()*orders.size
                      else 0
     val escrowmaterial = if (orders.size > 0) orders(0).escrowitem.getType() else null
     if (!playerinv.contains(escrowmaterial,escrowamount)) return "Not enough " + escrowmaterial + " in inventory to supply order"
 
+    //Do order fill escrow
     val matched = OrderMatch.findOrder(orders(0)) // find all orders matching this time
-    val numFilledOrders = scala.math.max( matched.size  - orders.size,0)
+    val numFilledOrders = scala.math.min( matched.size,orders.size)
     val numNewOrders = scala.math.max(orders.size - matched.size,0)
 
     (0 until numFilledOrders).foreach(i => {
@@ -138,21 +140,20 @@ class Minecap extends JavaPlugin{
       buyerinventory.addItem(order.filleditem)
       escrowIds.put(matchedOrder.player,escrowIds.getOrElse(matchedOrder.player,Array[ItemStack]()) :+ matchedOrder.filleditem)
     })
+    //build new orderbook
     val currentOrderBook = OrderIO.readOrderBook
     val filledOrders = matched.slice(0,numFilledOrders).map( o => o.orderid)
     val orderbookfunc = (po:PlayerOrder) => if (filledOrders.contains(po.id)) null else currentOrderBook.f(po)
 
     if (OrderIO.swapOrderBook(OrderBook(orderbookfunc))){
-
       val newOrders = orders.drop(numFilledOrders)
-
       newOrders.foreach( order => {
         val buyerinventory = order.player.getInventory()
         buyerinventory.removeItem(order.escrowitem)
         OrderIO.writeOrder(order)
       })
     }else{
-      return "something went wrong"
+      return "Something failed while writing orders"
     }
 
     return numFilledOrders + " Orders Filled, " + numNewOrders + "New Orders Placed"
@@ -181,7 +182,7 @@ class Minecap extends JavaPlugin{
               val validsellorder = order.item.getType() == material && order.buyOrSell == "SELL"
               val validbuyorder = order.material == material && order.buyOrSell == "BUY"
               validbuyorder || validsellorder
-            })
+            }).sortWith( (a,b) => if ( a.compare(b)== 1) true else false)
             validorders.foldLeft("")( (a,c)=> {
               val str = c.toSymbol
               a + str + "\n"
@@ -205,7 +206,7 @@ class Minecap extends JavaPlugin{
             validorders.foldLeft("")( (a,c)=> {
               val str = c.toSymbol
               a + str + "\n"
-            })
+            }).sorted
           }catch {
             case e:Exception =>{
               e.printStackTrace
@@ -240,7 +241,7 @@ class Minecap extends JavaPlugin{
       }
       return response
     }
-	 var response : String =
+	 val response : String =
 	   sender match{
 	    case p : Player => {
         implicit val player=p
@@ -250,7 +251,6 @@ class Minecap extends JavaPlugin{
 	      null
 	    }
 	  }
-
 
     sender.sendMessage(response)
    return true;

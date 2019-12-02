@@ -163,7 +163,7 @@ trait UnitOrder
 
 
 
- case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) {
+ case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) extends Ordered[Order]{
   //def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName()  + ",material:"+ material + ",item:" + item.getType()+"\u0001"+item.getAmount() + ",buyOrSell:" + buyOrSell + "}"//(new Gson).toJson(this)
   require(buyOrSell == "BUY" || buyOrSell == "SELL")
   def toJson() = {
@@ -182,11 +182,28 @@ trait UnitOrder
     if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
     else material + " => " + item.getAmount() + "@" + item.getType()
   }
+  def compare(that:Order): Int = {
+    if (that.buyOrSell != buyOrSell) return if (buyOrSell == "BUY") 1 else -1
+    buyOrSell match{
+      case "BUY" => {
+        if(filleditem.getType() == that.filleditem.getType()){
+            return filleditem.getAmount().compare(that.filleditem.getAmount())
+        }else{
+          filleditem.getType().toString.compare(that.filleditem.getType().toString)
+        }
+      }
+      case "SELL" => {
+        if(escrowitem.getType() == that.escrowitem.getType()){
+          escrowitem.getAmount().compare(that.escrowitem.getAmount())
+        }else{
+          escrowitem.getType().toString.compare(that.escrowitem.getType().toString)
+        }
+      }
+      case _ => -1
+    }
+  }
   val filleditem = if (buyOrSell == "SELL") new ItemStack(material,1) else item
   val escrowitem = if (buyOrSell == "SELL") item else new ItemStack(material,1)
-  //require(player.getInventory().contains(escrowitem))
-  //def fromJson(str:String):PlayerOrder = new PlayerOrderJson(str).fromJson
-  //def toPlayerOrder():PlayerOrder = fromJson(toJson) //probably fix this
 }
 
 object Order {
