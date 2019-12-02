@@ -69,7 +69,7 @@ class Minecap extends JavaPlugin{
         case "buy" => {
           args.size match{
             case 1 => {
-              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
               res.map( i => i.toString).toBuffer.asJava
             }
             case _ => Array[String]().toBuffer.asJava
@@ -78,7 +78,7 @@ class Minecap extends JavaPlugin{
         case "sell" => {
           args.size match{
             case 1 => {
-              val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
+              val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
               res.map( i => i.toString).toBuffer.asJava
             }
             case _ => Array[String]().toBuffer.asJava
@@ -181,7 +181,7 @@ class Minecap extends JavaPlugin{
               val validsellorder = order.item.getType() == material && order.buyOrSell == "SELL"
               val validbuyorder = order.material == material && order.buyOrSell == "BUY"
               validbuyorder || validsellorder
-            })
+            }).sorted.reverse
             validorders.foldLeft("")( (a,c)=> {
               val str = c.toSymbol
               a + str + "\n"
@@ -201,7 +201,7 @@ class Minecap extends JavaPlugin{
               val validbuyorder = order.item.getType() == material && order.buyOrSell == "BUY"
               val validsellorder = order.material == material && order.buyOrSell == "SELL"
               validbuyorder || validsellorder
-            })
+            }).sorted
             validorders.foldLeft("")( (a,c)=> {
               val str = c.toSymbol
               a + str + "\n"
