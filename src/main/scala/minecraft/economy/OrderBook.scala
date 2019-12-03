@@ -99,11 +99,11 @@ object OrderIO {
     }
     PlayerOrder(playerOrderMap,orderid)
   }
-  def filledOrder(p:Player, po:PlayerOrder) : FilledOrder ={
-    val filledOrderMap = (t:PlayerOrder) => if (t == po) p else null
-    FilledOrder(filledOrderMap)
-  }
 
+  def scrubString(str: String): String ={
+      val strmap = Order.tokenmap
+      strmap.keySet.foldLeft(str)( (s,k) => s.replaceAll(k,strmap.getOrElse(k,k))).toLowerCase
+  }
 }
 
 abstract class FlatJson[A]{
@@ -165,11 +165,15 @@ case class Order(orderid: Int,player: Player, material: Material,item: ItemStack
   def toUnitOrder() = OrderIO.unitOrder(material,item,buyOrSell)
   def toPlayerOrder() = PlayerOrderJson(toJson).fromJson
   def toSymbol() = {
-    if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
-    else material + " => " + item.getAmount() + "@" + item.getType()
+    OrderIO.scrubString(
+      if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
+      else material + " => " + item.getAmount() + "@" + item.getType()
+    )
   }
   def compare(that:Order): Int = {
+    if (that == null) return 1
     if (that.buyOrSell != buyOrSell) return if (buyOrSell == "BUY") 1 else -1
+
     buyOrSell match{
       case "BUY" => {
         if(filleditem.getType() == that.filleditem.getType()){
@@ -218,6 +222,7 @@ object Order {
       }
     }
   }
+  val tokenmap = HashMap[String,String](("LEGACY_",""))
 }
 
 case class OrderBook(f:PlayerOrder => Order){

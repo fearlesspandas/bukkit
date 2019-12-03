@@ -45,17 +45,17 @@ class Minecap extends JavaPlugin{
 
 	override def onDisable() {
 		getLogger().info("Backing up Escrow currently in memory");
-    // val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
-    //   val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
-    //   val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
-    //     val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
-    //     acc + newentry
-    //   })
-    //   acc + newplayerentry
-    // })
-    // val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
-    // fw.write(newEscrowData)
-    // fw.close()
+    val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
+      val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
+      val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
+        val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
+        acc + newentry
+      })
+      acc + newplayerentry
+    })
+    val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
+    fw.write(newEscrowData)
+    fw.close()
 	}
 
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
@@ -109,8 +109,8 @@ class Minecap extends JavaPlugin{
       case "SELL" => Material.getMaterial(orderarr(0).toUpperCase)
     }
     val order = buyOrSell match {
-      case "BUY" => Order(OrderIO.nextid,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"BUY")
-      case "SELL" => Order(OrderIO.nextid,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"SELL")
+      case "BUY" => Order(OrderIO.nextid + index,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"BUY")
+      case "SELL" => Order(OrderIO.nextid + index,player,unitmaterial,new ItemStack(itemmaterial,itemquantity),"SELL")
     }
     orderlist :+ order
   })
@@ -183,10 +183,18 @@ class Minecap extends JavaPlugin{
               val validbuyorder = order.material == material && order.buyOrSell == "BUY"
               validbuyorder || validsellorder
             }).sorted.reverse
-            validorders.foldLeft("")( (a,c)=> {
-              val str = c.toSymbol
-              a + str + "\n"
-            })
+            validorders.foldLeft( ("-----------BUY---------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
+              if(c.compare(a._2) != 0){
+                val str = if(a._2 != null) a._2.toSymbol + " /" + a._3 +"\n" else "" +
+                          (if (c == validorders.last) c.toSymbol + "\n" else "")
+                (a._1 + str,c,1)
+              }else{
+                val oldvolume = a._3
+                val newvolume = oldvolume+1
+                val appendOrder = if(c == validorders.last) c.toSymbol +" /" + newvolume + "\n" else ""
+                (a._1 + appendOrder,c,a._3+1)
+              }
+            })._1
           }catch {
             case e:Exception =>{
               e.printStackTrace
@@ -203,10 +211,22 @@ class Minecap extends JavaPlugin{
               val validsellorder = order.material == material && order.buyOrSell == "SELL"
               validbuyorder || validsellorder
             }).sorted
-            validorders.foldLeft("")( (a,c)=> {
-              val str = c.toSymbol
-              a + str + "\n"
-            }).sorted
+            if (validorders.size > 0) {
+              validorders.foldLeft( ("-----------SELL--------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
+                if(c.compare(a._2) != 0){
+                  val str = if(a._2 != null) a._2.toSymbol + " /" + a._3 +"\n" else "" +
+                            (if (c == validorders.last) c.toSymbol + "\n" else "")
+                  (a._1 + str,c,1)
+                }else{
+                  val oldvolume = a._3
+                  val newvolume = oldvolume+1
+                  val appendOrder = if(c == validorders.last) c.toSymbol +" /" + newvolume + "\n" else ""
+                  (a._1 + appendOrder,c,a._3+1)
+                }
+              })._1
+            }else{
+              return ""
+            }
           }catch {
             case e:Exception =>{
               e.printStackTrace
@@ -226,8 +246,7 @@ class Minecap extends JavaPlugin{
                   case e:Exception => false
                 }
 
-              if (success) escrowIds.put(player,escrowIds.getOrElse(player,Array[ItemStack]())
-              .filter( j => j == i) )
+              if (success) escrowIds.put(player,escrowIds.getOrElse(player,Array[ItemStack]()).filter( j => j == i) )
             })
             "enjoy what you've earned"
           }catch{
