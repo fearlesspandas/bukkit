@@ -166,8 +166,8 @@ case class Order(orderid: Int,player: Player, material: Material,item: ItemStack
   def toPlayerOrder() = PlayerOrderJson(toJson).fromJson
   def toSymbol() = {
     OrderIO.scrubString(
-      if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
-      else material + " => " + item.getAmount() + "@" + item.getType()
+      if(buyOrSell == "BUY") item.getAmount() + OrderBookConstants.amountdelim + item.getType()+" => " + material
+      else material + " => " + item.getAmount() + OrderBookConstants.amountdelim + item.getType()
     )
   }
   def compare(that:Order): Int = {

@@ -62,11 +62,11 @@ class Minecap extends JavaPlugin{
       val response = cmd.getName() match {
         case "$" => {
             val concatargs = args.foldLeft("")( (a,c)=> a + c)
-            val args_ = concatargs.split("=>")
+            val args_ = concatargs.split(OrderBookConstants.mapdelim)
             //val res = Material.values()filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
             return Array("What you want => What you're offering","<amount>@<item> => <item>","<item> => <amount>@<item>").toBuffer.asJava
         }
-        case "buy" => {
+        case "sellers" => {
           args.size match{
             case 1 => {
               val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
@@ -75,7 +75,7 @@ class Minecap extends JavaPlugin{
             case _ => Array[String]().toBuffer.asJava
           }
         }
-        case "sell" => {
+        case "buyers" => {
           args.size match{
             case 1 => {
               val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
@@ -90,19 +90,19 @@ class Minecap extends JavaPlugin{
   }
   def parseOrder(player:Player,args:Array[String]):Array[Order] = {
     val concatargs = args.foldLeft("")( (a,c) => a + c)
-    val orderarr = concatargs.split("/")(0).split("=>")
-    val volume_ = concatargs.split("/")
+    val orderarr = concatargs.split(OrderBookConstants.volumedelim)(0).split(OrderBookConstants.mapdelim)
+    val volume_ = concatargs.split(OrderBookConstants.volumedelim)
     val volume = if (volume_.size > 1) volume_(1).toInt else 1
     (0 until volume).foldLeft(Array[Order]())( (orderlist,index) => {
                             //1@dirt => cobblestone //selling unit cobblestone for one dirt
-    val buyOrSell = if (orderarr(0).contains("@")) "BUY" else if (orderarr(1).contains("@")) "SELL" else null
+    val buyOrSell = if (orderarr(0).contains(OrderBookConstants.amountdelim)) "BUY" else if (orderarr(1).contains(OrderBookConstants.amountdelim)) "SELL" else null
     val itemquantity = buyOrSell match {
-      case "BUY" => orderarr(0).split("@")(0).toInt
-      case "SELL" => orderarr(1).split("@")(0).toInt
+      case "BUY" => orderarr(0).split(OrderBookConstants.amountdelim)(0).toInt
+      case "SELL" => orderarr(1).split(OrderBookConstants.amountdelim)(0).toInt
     }
     val itemmaterial = buyOrSell match {
-      case "BUY" =>  Material.getMaterial(orderarr(0).split("@")(1).toUpperCase)
-      case "SELL" => Material.getMaterial(orderarr(1).split("@")(1).toUpperCase)
+      case "BUY" =>  Material.getMaterial(orderarr(0).split(OrderBookConstants.amountdelim)(1).toUpperCase)
+      case "SELL" => Material.getMaterial(orderarr(1).split(OrderBookConstants.amountdelim)(1).toUpperCase)
     }
     val unitmaterial = buyOrSell match {
       case "BUY" => Material.getMaterial(orderarr(1).toUpperCase)
@@ -139,6 +139,7 @@ class Minecap extends JavaPlugin{
       buyerinventory.removeItem(order.escrowitem)
       buyerinventory.addItem(order.filleditem)
       escrowIds.put(matchedOrder.player,escrowIds.getOrElse(matchedOrder.player,Array[ItemStack]()) :+ matchedOrder.filleditem)
+      if (i == 0) matchedOrder.player.sendMessage(OrderIO.scrubString("Order filled! Go to GE and do /claim to retrieve your " + matchedOrder.filleditem.getType()))
     })
     //build new orderbook
     val currentOrderBook = OrderIO.readOrderBook
@@ -160,9 +161,10 @@ class Minecap extends JavaPlugin{
     //return "found " + matchedorders.size.toString + " matching orders"
   }
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
-
+    //todo: Use conversation class to prompt for orders
     def playerCommand(player: Player, cmd : Command, label : String, args : Array[String]):String ={
       val response = cmd.getName() match {
+        //ToDo Errors: No @
         case "$" => { // 64@cobblestone=>dirt is a unitBuy of dirt
           try {       // dirt=>64@cobblestone is a unitSell of dirt
             introduceOrder(player,args)
@@ -173,8 +175,8 @@ class Minecap extends JavaPlugin{
               return "Error:No order Placed"
             }
           }
-        }
-        case "buy" => {
+        }//todo implement pagination on results
+        case "sellers" => {
           try{
             val material = Material.getMaterial(args(0).toUpperCase)
             val orderlist = OrderIO.readOrders
@@ -183,7 +185,7 @@ class Minecap extends JavaPlugin{
               val validbuyorder = order.material == material && order.buyOrSell == "BUY"
               validbuyorder || validsellorder
             }).sorted.reverse
-            validorders.foldLeft( ("-----------BUY---------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
+            validorders.foldLeft( ("\n------SELL-ORDERS--------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
               if(c.compare(a._2) != 0){
                 val str = if(a._2 != null) a._2.toSymbol + " /" + a._3 +"\n" else "" +
                           (if (c == validorders.last) c.toSymbol + "\n" else "")
@@ -202,7 +204,7 @@ class Minecap extends JavaPlugin{
             }
           }
         }
-        case "sell" => {
+        case "buyers" => {
           try {
             val material = Material.getMaterial(args(0).toUpperCase)
             val orderlist = OrderIO.readOrders
@@ -212,7 +214,7 @@ class Minecap extends JavaPlugin{
               validbuyorder || validsellorder
             }).sorted
             if (validorders.size > 0) {
-              validorders.foldLeft( ("-----------SELL--------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
+              validorders.foldLeft( ("\n------BUY-ORDERS--------\n",null.asInstanceOf[Order],0) )( (a,c)=> {
                 if(c.compare(a._2) != 0){
                   val str = if(a._2 != null) a._2.toSymbol + " /" + a._3 +"\n" else "" +
                             (if (c == validorders.last) c.toSymbol + "\n" else "")
@@ -248,7 +250,7 @@ class Minecap extends JavaPlugin{
 
               if (success) escrowIds.put(player,escrowIds.getOrElse(player,Array[ItemStack]()).filter( j => j == i) )
             })
-            "enjoy what you've earned"
+            "Enjoy what you've earned"
           }catch{
             case e:Exception => {
               e.printStackTrace
