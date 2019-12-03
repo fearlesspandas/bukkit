@@ -1,7 +1,6 @@
 package minecraft.economy;
 
 
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.Command;
 import org.bukkit.Material;
@@ -9,7 +8,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.Bukkit;
-import com.google.gson.Gson
 
 import java.io._
 import java.util.UUID
@@ -105,20 +103,13 @@ object OrderIO {
     val filledOrderMap = (t:PlayerOrder) => if (t == po) p else null
     FilledOrder(filledOrderMap)
   }
-  // def playerMultiOrder(p:Player,u:UnitOrder,quantity:Int): List[PlayerOrder] = {
-  //   (0 until quantity).map(i => playerOrder(p,u)).toList
-  // }
-  // def playerMultiOrder(p:Player,m:Material,i:ItemStack,quantity:Int,buyOrSell:String): List[PlayerOrder] = {
-  //   playerMultiOrder(p,unitOrder(m,i,buyOrSell),quantity)
-  // }
 
 }
 
 abstract class FlatJson[A]{
-    //require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
-    //require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
     def fromJson(): A
 }
+
 case class PlayerOrderJson(str:String) extends FlatJson[PlayerOrder] {
     require (str.count(c => c == '{') ==1,"String arg does not represent a flat json objet")
     require (str.count(c => c == '}') ==1,"String arg does not represent a flat json objet")
@@ -157,14 +148,9 @@ trait UnitOrder
    val id = if(i_d == -1) OrderIO.nextid else i_d
    require(id >= 0,"Playerorder id less than zero")
  }
- //case class PlayerOrder(id:Int)
- case class FilledOrder( f: PlayerOrder => Player)
 
 
-
-
- case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) {
-  //def toJson() = "{" + "orderid:"+ orderid +  ",player:"+ player.getPlayerListName()  + ",material:"+ material + ",item:" + item.getType()+"\u0001"+item.getAmount() + ",buyOrSell:" + buyOrSell + "}"//(new Gson).toJson(this)
+case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) extends Ordered[Order]{
   require(buyOrSell == "BUY" || buyOrSell == "SELL")
   def toJson() = {
     val fieldmap = new HashMap[String,String]()
@@ -182,11 +168,28 @@ trait UnitOrder
     if(buyOrSell == "BUY") item.getAmount() + "@" + item.getType()+" => " + material
     else material + " => " + item.getAmount() + "@" + item.getType()
   }
+  def compare(that:Order): Int = {
+    if (that.buyOrSell != buyOrSell) return if (buyOrSell == "BUY") 1 else -1
+    buyOrSell match{
+      case "BUY" => {
+        if(filleditem.getType() == that.filleditem.getType()){
+            return filleditem.getAmount().compare(that.filleditem.getAmount())
+        }else{
+          filleditem.getType().toString.compare(that.filleditem.getType().toString)
+        }
+      }
+      case "SELL" => {
+        if(escrowitem.getType() == that.escrowitem.getType()){
+          escrowitem.getAmount().compare(that.escrowitem.getAmount())
+        }else{
+          escrowitem.getType().toString.compare(that.escrowitem.getType().toString)
+        }
+      }
+      case _ => -1
+    }
+  }
   val filleditem = if (buyOrSell == "SELL") new ItemStack(material,1) else item
   val escrowitem = if (buyOrSell == "SELL") item else new ItemStack(material,1)
-  //require(player.getInventory().contains(escrowitem))
-  //def fromJson(str:String):PlayerOrder = new PlayerOrderJson(str).fromJson
-  //def toPlayerOrder():PlayerOrder = fromJson(toJson) //probably fix this
 }
 
 object Order {
