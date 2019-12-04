@@ -8,18 +8,28 @@ commands:
        usage: /<command>
        permission: minecap.trade
        permission-message: You don't have <permission>
-    buy:
+    buyers:
        description: This is a demo command.
        usage: /<command>
-       permission: minecap.buy
+       permission: minecap.buyers
        permission-message: You don't have <permission>
-    sell:
+    sellers:
        description: This is a demo command.
        usage: /<command>
-       permission: minecap.sell
+       permission: minecap.sellers
        permission-message: You don't have <permission>
     claim:
        description: This is a demo command.
        usage: /<command>
        permission: minecap.claim
+       permission-message: You don't have <permission>
+    trade:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.trade
+       permission-message: You don't have <permission>
+    lookup:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.lookup
        permission-message: You don't have <permission>

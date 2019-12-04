@@ -4,7 +4,7 @@ object OrderBookConstants {
   val orderbookloc_ = "/home/mc/server/plugins/testplug/orders.json"
   implicit val orderbookloc = orderbookloc_
   val escrowDataLoc = "/home/mc/server/plugins/testplug/escrow.csv"
-  val mapdelim = "=>"
-  val volumedelim = "/"
-  val amountdelim = "@"
+  val mapdelim = "per"
+  val volumedelim = '*'
+  val amountdelim = ":"
 }
