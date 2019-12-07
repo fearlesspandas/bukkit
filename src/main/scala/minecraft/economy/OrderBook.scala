@@ -231,7 +231,7 @@ case class OrderBook(f:PlayerOrder => Order){
   def toJsonString(implicit loc:String): String={
     //replace current order book with playerorders
     //mapped through this.f
-    val oldorderbook = OrderIO.readOrders(loc).map(o => PlayerOrderJson(o.toJson).fromJson)
+    val oldorderbook = OrderIO.readOrders(loc).filter(o => o!= null).map(o => o.toPlayerOrder)
     oldorderbook.map(playerorder => f(playerorder)).filter(order => order != null).foldLeft("")( (a,c) => a + c.toJson + "\n")
   }
   def toList(implicit loc:String ): List[Order]={
@@ -265,9 +265,13 @@ object OrderMatch{
     val orderbook = OrderIO.readOrderBook(loc)
     val validorders = (po : PlayerOrder) => if(po.id == a.orderid | po.id == b.orderid) null else orderbook.f(po)
     OrderIO.swapOrderBook(OrderBook(validorders))(loc)
-  }
-  def orderMatch(a:Order,b:Order) = {
-    a.item.getType() == b.item.getType() && a.item.getAmount() == b.item.getAmount() && a.material == b.material && a.buyOrSell != b.buyOrSell //&& a.player.getPlayerListName != b.player.getPlayerListName()
+  }//does b fill a
+  def orderMatch(bookorder:Order,fillorder:Order) = {
+    if (bookorder.buyOrSell == "SELL"){
+      bookorder.item.getType() == fillorder.item.getType() && bookorder.item.getAmount() >= fillorder.item.getAmount() && bookorder.material == fillorder.material && bookorder.buyOrSell != fillorder.buyOrSell //&& bookorder.player.getPlayerListName != fillorder.player.getPlayerListName()
+    }else{
+      bookorder.item.getType() == fillorder.item.getType() && bookorder.item.getAmount() <= fillorder.item.getAmount() && bookorder.material == fillorder.material && bookorder.buyOrSell != fillorder.buyOrSell
+    }
   }
   def findOrder(order:Order,rplc_orderbook:OrderBook = null)(implicit orderbookloc:String):List[Order] =  {
     val orderbook = if (rplc_orderbook != null) rplc_orderbook else OrderIO.readOrderBook(orderbookloc)

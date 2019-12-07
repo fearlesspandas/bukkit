@@ -7,4 +7,5 @@ object OrderBookConstants {
   val mapdelim = "per"
   val volumedelim = '*'
   val amountdelim = ":"
+  def delims() = Array(mapdelim,volumedelim,amountdelim)
 }

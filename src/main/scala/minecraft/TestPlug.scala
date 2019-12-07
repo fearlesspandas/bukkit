@@ -19,6 +19,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.Bukkit;
+import org.bukkit.event.Listener
 // import org.bukkit.inventory.Packet250CustomPayload;
 // import org.bukkit.inventory.Packet100OpenWindow;
 // import org.bukkit.inventory.MerchantRecipeList;
@@ -29,38 +30,39 @@ import minecraft.economy._
 import minecraft.constants._
 import minecraft.playerio._
 //import org.apache.spark.sql._
-
+trait MinecapListener extends Listener
 class Minecap extends JavaPlugin{
   import OrderBookConstants._
-  val escrowIds = Trade.escrowIds
+  val escrow = Trade.escrow
 
 
 
   override def onEnable() {
-		getLogger().info("Reading in escrow file!");
-    val server = Bukkit.getServer()
-    val escrowraw= Source.fromFile(OrderBookConstants.escrowDataLoc).getLines.toArray
-    escrowraw.foreach( e => {
-      val args = e.split(",")
-      val player = server.getPlayer(UUID.fromString(args(0)))
-      val itemstack = new ItemStack(Material.getMaterial(args(1)), args(2).toInt)
-      escrowIds.put(player,escrowIds.getOrElse(player,Array[ItemStack]()) :+ itemstack)
-    })
+    getServer().getPluginManager().registerEvents(MenuActions.menuActions(), this);
+		getLogger().info("-----------------------On Enable Invoked!---------------------");
+    // val server = Bukkit.getServer()
+    // val escrowraw= Source.fromFile(OrderBookConstants.escrowDataLoc).getLines.toArray
+    // escrowraw.foreach( e => {
+    //   val args = e.split(",")
+    //   val player = server.getPlayer(UUID.fromString(args(0)))
+    //   val itemstack = new ItemStack(Material.getMaterial(args(1)), args(2).toInt)
+    //   escrow.put(player,escrow.getOrElse(player,Array[ItemStack]()) :+ itemstack)
+    // })
 	}
 
 	override def onDisable() {
-		getLogger().info("Backing up Escrow currently in memory");
-    val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
-      val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
-      val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
-        val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
-        acc + newentry
-      })
-      acc + newplayerentry
-    })
-    val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
-    fw.write(newEscrowData)
-    fw.close()
+		// getLogger().info("Backing up Escrow currently in memory");
+    // val newEscrowData = escrow.keySet.foldLeft("")( (acc,p) => {
+    //   val itemarray = escrow.getOrElse(p,Array[ItemStack]())
+    //   val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
+    //     val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
+    //     acc + newentry
+    //   })
+    //   acc + newplayerentry
+    // })
+    // val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
+    // fw.write(newEscrowData)
+    // fw.close()
 	}
 
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
@@ -92,7 +94,7 @@ class Minecap extends JavaPlugin{
         case "lookup" => {
           args.size match{
             case 1 => {
-              val res = Material.values()
+              val res = Material.values().filter( m => m.isItem() && m.toString().contains(args(0).toUpperCase() ) )
               res.map( i => i.toString).toBuffer.asJava
             }
             case _ => Array[String]().toBuffer.asJava
@@ -120,10 +122,10 @@ class Minecap extends JavaPlugin{
           }
         }//todo implement pagination on results
         case "sellers" => {
-          Trade.filterSellers(player,args)
+          Trade.orderListToString(Trade.filterSellers(player,args))("\n------SELL-ORDERS--------\n")
         }
         case "buyers" => {
-          Trade.filterBuyers(player,args)
+          Trade.orderListToString(Trade.filterBuyers(player,args))("\n-------BUY-ORDERS--------\n")
         }
         case "claim" => {
           Trade.claim(player,args)
