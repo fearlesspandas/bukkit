@@ -127,12 +127,21 @@ class Minecap extends JavaPlugin{
         case "buyers" => {
           Trade.orderListToString(Trade.filterBuyers(player,args))("\n-------BUY-ORDERS--------\n")
         }
+        case "myorders" => {
+          Trade.orderListToString(Trade.filterPlayerOrders(player,args))("\n------YOUR-ORDERS--------\n")
+        }
+        case "cancel" => {
+          Trade.orderListToString(Trade.cancel(player,args))("\n------CANCELLED-ORDERS--------\n") + "\n" + "The above orders have been added to escrow. Do /claim to retrieve orders"
+        }
         case "claim" => {
           Trade.claim(player,args)
         }
         case "trade" => {
           import Trade._
           trade(player,args)
+        }
+        case "help" => {
+          
         }
         case _ => "no matching command"
       }

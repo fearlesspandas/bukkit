@@ -33,3 +33,13 @@ commands:
        usage: /<command>
        permission: minecap.lookup
        permission-message: You don't have <permission>
+    myorders:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.myorders
+       permission-message: You don't have <permission>
+    cancel:
+       description: This is a demo command.
+       usage: /<command>
+       permission: minecap.cancel
+       permission-message: You don't have <permission>

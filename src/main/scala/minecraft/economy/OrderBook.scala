@@ -41,7 +41,7 @@ object OrderIO {
     }
   }
   def writeOrder(orderid:Int,player: Player, price: Material,item: ItemStack,buyOrSell:String)(implicit loc :String): Boolean = {
-    writeOrder(Order(orderid,player,price,item,buyOrSell))
+    writeOrder(Order(orderid,player.getUniqueId(),price,item,buyOrSell))
   }
   def readOrderBook(implicit loc:String): OrderBook =  {
     val ordersraw= Source.fromFile(loc).getLines.toArray
@@ -150,12 +150,12 @@ trait UnitOrder
  }
 
 
-case class Order(orderid: Int,player: Player, material: Material,item: ItemStack,buyOrSell:String) extends Ordered[Order]{
+case class Order(orderid: Int,player: UUID, material: Material,item: ItemStack,buyOrSell:String) extends Ordered[Order]{
   require(buyOrSell == "BUY" || buyOrSell == "SELL")
   def toJson() = {
     val fieldmap = new HashMap[String,String]()
     fieldmap.put("orderid",orderid.toString)
-    fieldmap.put("player",player.getUniqueId().toString)
+    fieldmap.put("player",player.toString())
     fieldmap.put("material",material.toString())
     fieldmap.put("item",item.getType().toString)
     fieldmap.put("amount",item.getAmount().toString)
@@ -208,7 +208,7 @@ object Order {
         fieldmap.put(j(0),j(1))
       })
       val server = Bukkit.getServer()
-      val player = server.getPlayer( UUID.fromString( fieldmap.getOrElse("player","") ) )
+      val player = UUID.fromString(fieldmap.getOrElse("player",""))
       val orderid = fieldmap.getOrElse("orderid","0").toInt
       val material = Material.getMaterial(fieldmap.getOrElse("material","").toUpperCase)
       val itemmaterial = Material.getMaterial(fieldmap.getOrElse("item","").toUpperCase)
