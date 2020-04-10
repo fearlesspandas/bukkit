@@ -11,8 +11,6 @@ import org.bukkit.Bukkit;
 
 import java.io._
 import java.util.UUID
-import scala.reflect.runtime.universe._
-import scala.reflect.ClassTag
 import scala.collection.mutable.HashMap
 import scala.io.Source
 
