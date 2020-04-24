@@ -10,6 +10,11 @@
         <maven.compiler.source>1.8</maven.compiler.source>
     </properties>
     <repositories>
+        <repository>
+            <id>data-local</id>
+            <name>data</name>
+            <url>file:///home/landon/git/bukkit/repo</url>
+        </repository>
       <repository>
         <id>maven-central</id>
         <url>https://repo1.maven.org/maven2/</url>
@@ -21,6 +26,12 @@
 
     </repositories>
     <dependencies>
+<!--        <dependency>-->
+<!--            <groupId>typical</groupId>-->
+<!--            <artifactId>typical</artifactId>-->
+<!--            <version>0.1</version>-->
+
+<!--        </dependency>-->
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
@@ -32,48 +43,6 @@
            <version>1.14.4-R0.1-SNAPSHOT</version><!--change this value depending on the version-->
            <type>jar</type>
        </dependency>
-       <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
-      <dependency>
-          <groupId>com.google.code.gson</groupId>
-          <artifactId>gson</artifactId>
-          <version>2.7</version>
-      </dependency>
-
-       <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-core -->
-      <!-- <dependency>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>spark-core_2.11</artifactId>
-          <version>2.4.4</version>
-      </dependency> -->
-      <!-- https://mvnrepository.com/artifact/org.apache.spark/spark-sql -->
-      <!-- <dependency>
-          <groupId>org.apache.spark</groupId>
-          <artifactId>spark-sql_2.11</artifactId>
-          <version>2.4.4</version>
-      </dependency> -->
-
-
-       <!-- <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-core</artifactId>
-        <version>2.8.11</version>
-    </dependency>
-    <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>2.8.11</version>
-    </dependency>
-
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-annotations</artifactId>
-      <version>2.8.11</version>
-    </dependency> -->
-    <dependency>
-    <groupId>com.googlecode.json-simple</groupId>
-    <artifactId>json-simple</artifactId>
-    <version>1.1.1</version>
-    </dependency>
 
     </dependencies>
     <build>
@@ -128,12 +97,6 @@
           <include>*:*</include>
         </includes>
       </artifactSet>
-      <!-- <relocations>
-        <relocation>
-          <pattern>org.scala-lang</pattern>
-          <shadedPattern>minecraft.plugins.shaded.scala-lang</shadedPattern>
-        </relocation>
-      </relocations> -->
         </configuration>
 
         <executions>
