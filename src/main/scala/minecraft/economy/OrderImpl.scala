@@ -63,6 +63,7 @@ object OrderImpl {
     myprovider
       .register[orderbook]
       .register[escrow]
+      .register[matching]
 //      .register[flatbook]
 //      .register[flatescrow]
   ).dataset
@@ -97,14 +98,17 @@ object OrderImpl {
   def main(args: Array[String]): Unit = {
     val neworder = order(it,mat,20,"me")
     val neworder2 = order(it,mat,20,"me2")
-    val otherorder = order(mat,it,30,"you")
+    val otherorder = order(mat,it2,30,"you")
     val orderseq = Seq(neworder,neworder2,otherorder)
-    val orderadder = OrderImpl.dat.toFlat[orderbook,order,Map[Any,Seq[order]]].typedInitVal
-    val escrowadder = OrderImpl.dat.toFlat[escrow,order,Map[Any,Seq[Fill]]].typedInitVal
+    val src = OrderImpl.dat.calc[matchtype,matching]
+    val orderadder = src.toFlat[orderbook,order,Map[Any,Seq[order]]].typedInitVal
+    val escrowadder = src.toFlat[escrow,order,Map[Any,Seq[Fill]]].typedInitVal
+    val matcher = src.toFlat[matching,order,(order,Seq[order])].typedInitVal
     //val orderadder = OrderImpl.dat.flatfetch[flatbook].typedInitVal
     //val escrowadder = OrderImpl.dat.flatfetch[flatescrow].typedInitVal
-    orderseq.foldLeft(dat)((src,ord) => escrowadder(orderadder(src,ord), ord))
-    println("New orderbook: " + orderadder(orderadder(orderadder(OrderImpl.dat,neworder),neworder2),otherorder).fetch[orderbooktype,orderbook].typedInitVal(null))
+    val updatedbook = orderseq.foldLeft(dat)((src,ord) => escrowadder(orderadder(matcher(src,ord),ord), ord))
+    println("New orderbook: " + updatedbook.fetch[orderbooktype,orderbook].typedInitVal(null))
+    println("eEscrow:" + updatedbook.fetch[escrowtype,escrow].typedInitVal(null))
 
 
   }
