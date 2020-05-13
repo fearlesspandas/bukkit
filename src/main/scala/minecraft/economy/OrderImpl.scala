@@ -1,14 +1,15 @@
 package minecraft.economy
 import Orders.Order._
-import Typical.impl.{data, myprovider}
+import Typical.core.Typeable.{InitialType, dataset}
+import Typical.impl.{data, myprovider, recSim}
 import Typical.implicits.implicits._
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
 object OrderImpl {
-  class unitSellQueue extends dataQueue[itemstack,material]
-  class unitSell extends order[itemstack,material](it,mat,10,"me")
+
+  class unitSell extends order(it,mat,10,"me")
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
     override def toString = m.toString + ":" + a
     def compareAny(that:Any): Int = {
@@ -57,37 +58,17 @@ object OrderImpl {
   val it2 = itemstack(diamond,5)
   val mat = material(Material.getMaterial("DIRT"))
   var dat = data[
-    orderbook[itemstack,material]
-      with matching[itemstack,material]
-      with matching[material,itemstack]
-      with orderbook[material,itemstack]
-      with escrowadd[itemstack,material]
-      with escrowadd[material,itemstack]
-  ](myprovider
-      .register[orderbook[itemstack,material]]
-      .register[orderbook[material,itemstack]]
-      .register[escrowadd[material,itemstack]]
-      .register[escrowadd[itemstack,material]]
+    orderbook with matching with escrow //with flatbook with flatescrow
+  ](
+    myprovider
+      .register[orderbook]
+      .register[escrow]
+//      .register[flatbook]
+//      .register[flatescrow]
   ).dataset
 
 
-  def updateDataModel(o:order[_,_]):Boolean = {
-//    try{
-        OrderImpl.dat = o match {
-        case order(_:material,_:itemstack,_,_) => rawType[material,itemstack](OrderImpl.dat,o.asInstanceOf[order[material,itemstack]])
-        case order(_:itemstack,_:material,_,_) => rawType[itemstack,material](OrderImpl.dat,o.asInstanceOf[order[itemstack,material]])
-        case _ => OrderImpl.dat
-      }
-      true
-    //}
-//    catch{
-//      case e:Exception => {
-//        e.printStackTrace()
-//        false
-//      }
-//    }
-
-  }
+  def updateDataModel(o:order):Boolean = ??? //{
 
 
   implicit class MapSerializer(m:Map[_,_]) {
@@ -110,40 +91,21 @@ object OrderImpl {
  }
 
   def getOrderbook():String = {
-    OrderImpl.dat.fetch[orderbooktype[itemstack,material],orderbook[itemstack,material]].typedInitVal.toString()
-  }
-  def getEscrow(plyr:player):String = {
-    val escrowmap = OrderImpl.dat.fetch[escrowtype[itemstack,material],escrowadd[itemstack,material]].typedInitVal
-    escrowmap.get(plyr.id).getOrElse(Seq()).toString()
-  }
-//  def getAllEscrow(plyr:player):escrowtype = {
-//    val escrowmap = OrderImpl.dat.fetch[escrowtype[itemstack,material],escrowadd[itemstack,material]].typedInitVal
-//
-//  }
-  def setEscrow[A,B](p:player,plyrescrow:order[A,B]*) = {
-    val oldescrow = OrderImpl.dat.fetch[escrowtype[A,B],escrowadd[A,B]].typedInitVal
-    OrderImpl.dat = OrderImpl.dat.include[escrowtype[A,B],escrowadd[A,B]](oldescrow.updated(p.id,plyrescrow))
+    OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal.toString()
   }
 
   def main(args: Array[String]): Unit = {
-    updateDataModel(order[itemstack,material](it,mat,10,"me"))
-    println(OrderImpl.dat.fetch[orderbooktype[itemstack,material],orderbook[itemstack,material]].typedInitVal)
-    println(OrderImpl.dat.fetch[orderbooktype[material,itemstack],orderbook[material,itemstack]].typedInitVal)
-    println("////////////////////////////////////////////////////////////////////////////////")
-//    updateDataModel(order[material,itemstack](mat,it,8,"you"))
-//    println(OrderImpl.dat.fetch[orderbooktype[itemstack,material],orderbook[itemstack,material]].typedInitVal)
-//    println(OrderImpl.dat.fetch[orderbooktype[material,itemstack],orderbook[material,itemstack]].typedInitVal)
-//    println("////////////////////////////////////////////////////////////////////////////////")
-//    updateDataModel(order[material,itemstack](mat,it,8,"you"))
-//    println(OrderImpl.dat.fetch[orderbooktype[itemstack,material],orderbook[itemstack,material]].typedInitVal)
-//    println(OrderImpl.dat.fetch[orderbooktype[material,itemstack],orderbook[material,itemstack]].typedInitVal)
-//    println("////////////////////////////////////////////////////////////////////////////////")
-    updateDataModel(order[itemstack,material](it,mat,10,"me"))
-    println(OrderImpl.dat.fetch[orderbooktype[itemstack,material],orderbook[itemstack,material]].typedInitVal)
-    println(OrderImpl.dat.fetch[orderbooktype[material,itemstack],orderbook[material,itemstack]].typedInitVal)
-    println("ESCROW//////////////////////////////////")
-    println(OrderImpl.dat.fetch[escrowtype[itemstack,material],escrowadd[itemstack,material]].typedInitVal)
-    println(OrderImpl.dat.fetch[escrowtype[material,itemstack],escrowadd[material,itemstack]].typedInitVal)
+    val neworder = order(it,mat,20,"me")
+    val neworder2 = order(it,mat,20,"me2")
+    val otherorder = order(mat,it,30,"you")
+    val orderseq = Seq(neworder,neworder2,otherorder)
+    val orderadder = OrderImpl.dat.toFlat[orderbook,order,Map[Any,Seq[order]]].typedInitVal
+    val escrowadder = OrderImpl.dat.toFlat[escrow,order,Map[Any,Seq[Fill]]].typedInitVal
+    //val orderadder = OrderImpl.dat.flatfetch[flatbook].typedInitVal
+    //val escrowadder = OrderImpl.dat.flatfetch[flatescrow].typedInitVal
+    orderseq.foldLeft(dat)((src,ord) => escrowadder(orderadder(src,ord), ord))
+    println("New orderbook: " + orderadder(orderadder(orderadder(OrderImpl.dat,neworder),neworder2),otherorder).fetch[orderbooktype,orderbook].typedInitVal(null))
+
 
   }
 }
