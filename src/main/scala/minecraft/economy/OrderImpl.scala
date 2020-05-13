@@ -100,15 +100,14 @@ object OrderImpl {
     val neworder2 = order(it,mat,20,"me2")
     val otherorder = order(mat,it2,30,"you")
     val orderseq = Seq(neworder,neworder2,otherorder)
-    val src = OrderImpl.dat.calc[matchtype,matching]
-    val orderadder = src.toFlat[orderbook,order,Map[Any,Seq[order]]].typedInitVal
-    val escrowadder = src.toFlat[escrow,order,Map[Any,Seq[Fill]]].typedInitVal
-    val matcher = src.toFlat[matching,order,(order,Seq[order])].typedInitVal
-    //val orderadder = OrderImpl.dat.flatfetch[flatbook].typedInitVal
-    //val escrowadder = OrderImpl.dat.flatfetch[flatescrow].typedInitVal
-    val updatedbook = orderseq.foldLeft(dat)((src,ord) => escrowadder(orderadder(matcher(src,ord),ord), ord))
+    val updatedbook = orderseq.foldLeft(dat)((src,ord) =>
+      src
+      .flatCalc[matching,order,(order,Seq[order])](ord)
+      .flatCalc[orderbook,order,Map[Any,Seq[order]]](ord)
+      .flatCalc[escrow,order,Map[Any,Seq[Fill]]](ord)
+    )
     println("New orderbook: " + updatedbook.fetch[orderbooktype,orderbook].typedInitVal(null))
-    println("eEscrow:" + updatedbook.fetch[escrowtype,escrow].typedInitVal(null))
+    println("Escrow:" + updatedbook.fetch[escrowtype,escrow].typedInitVal(null))
 
 
   }

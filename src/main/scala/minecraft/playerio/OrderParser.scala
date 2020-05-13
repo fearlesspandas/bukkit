@@ -43,25 +43,27 @@ object OrderParser {
   //def fromArgs[material,itemstack](args:Array[String]):Option[order[material,itemstack]] = ???
 
   def main(args:Array[String]):Unit = {
-//    import Typical.implicits.implicits._
-//    val str = "1: arrow => dirt # 5"//.replace(" ","")
-//    val str2 = "diamond:10 => dirt # 100".replace(" ","")
-//    println("running:" + str)
-//    println(unitsell.toString())
-//    println(unitbuy.findAllIn(str).mkString(""))
-//    println(unitsell.findAllIn(str).mkString(""))
-//    println(items.findAllIn(str).mkString(""))
-//
-//    val ord1 = fromArgs(player("0",null),Array(str))
-//    val ord2 = fromArgs(player("0",null),Array(str))
-//    OrderImpl.updateDataModel(ord1.get.left.get)
-//    println("Map 1////////////////")
-//    val res1 = OrderImpl.getOrderbook()
-//    println(res1)
-//    OrderImpl.updateDataModel(ord2.get.left.get)
-//    println("Map 2 /////////////////////////")
-//    val res2 = OrderImpl.getOrderbook()
-//   println(res2)
+    import Typical.implicits.implicits._
+    val str = "1: arrow => dirt # 5"//.replace(" ","")
+    val str2 = "dirt => diamond:20 # 100".replace(" ","")
+    println("running:" + str)
+    println(unitsell.toString())
+    println(unitbuy.findAllIn(str).mkString(""))
+    println(unitsell.findAllIn(str).mkString(""))
+    println(items.findAllIn(str).mkString(""))
+
+    val ord1 = fromArgs(player("0",null),Array(str))
+    val ord2 = fromArgs(player("0",null),Array(str2))
+    println(ord1)
+    println(ord2)
+    //OrderImpl.updateDataModel(ord1.get.left.get)
+    println("Map 1////////////////")
+    //val res1 = OrderImpl.getOrderbook()
+    //println(res1)
+    //OrderImpl.updateDataModel(ord2.get.left.get)
+    println("Map 2 /////////////////////////")
+    //val res2 = OrderImpl.getOrderbook()
+   //println(res2)
 
   }
 }
