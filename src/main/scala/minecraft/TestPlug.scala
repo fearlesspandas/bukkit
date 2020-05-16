@@ -68,7 +68,16 @@ class Minecap extends JavaPlugin{
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.remaining)
 
                         if (hasEscrow) {
-                          val inv = plyr.getInventory
+                          val currinv = plyr.getInventory().getContents()
+                          val (_,updatedInv) = currinv.foldLeft((o.remaining,Array[ItemStack]()))( (acc,curr) => {
+                            val (need,inv) = acc
+                            if(curr != null && curr.getType() == o.i.m && need > 0) (need - curr.getAmount(),inv :+ new ItemStack(curr.getType(),scala.math.max(curr.getAmount() - need,0)))
+                            else if(curr == null)(need,inv)
+                            else (need,inv :+ curr )
+                          } )
+                          plyr.getInventory().setContents(updatedInv)
+                          plyr.updateInventory()
+                          addOrder(o)
                         }else s"Not enough ${o.i.m} in inventory to fill order"
                     }
                     case Right(_:order) =>{
@@ -76,7 +85,16 @@ class Minecap extends JavaPlugin{
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.i.a * o.remaining)
 
                         if (hasEscrow) {
-                            ""
+                          val currinv = plyr.getInventory().getContents()
+                          val (_,updatedInv) = currinv.foldLeft((o.i.a*o.remaining,Array[ItemStack]()))( (acc,curr) => {
+                            val (need,inv) = acc
+                            if(curr != null && curr.getType() == o.i.m && need > 0) (need - curr.getAmount(),inv :+ new ItemStack(curr.getType(),scala.math.max(curr.getAmount() - need,0)))
+                            else if(curr == null)(need,inv)
+                            else (need,inv :+ curr )
+                          } )
+                          plyr.getInventory().setContents(updatedInv)
+                          plyr.updateInventory()
+                          addOrder(o)
                         }else s"Not enough ${o.i.m} in inventory to fill order"
                     }
                   }
@@ -98,8 +116,29 @@ class Minecap extends JavaPlugin{
           ""//getEscrow(player(plyr.getUniqueId().toString,plyr))
         }
         case "claim" => {
+          val playerinv = plyr.getInventory()
           val inv = plyr.getInventory()
-          ""//val escrow =
+          val esc = OrderImpl.getEscrow()
+          val unallocatedMaps = esc.getOrElse(plyr.getUniqueId.toString,Seq()).map( x => x match {
+            case Fill(m,amt) if m.isInstanceOf[material] =>
+              val newitemstack = new ItemStack(m.asInstanceOf[material].m,amt)
+              playerinv.addItem(newitemstack)
+            case Fill(i,amt) if i.isInstanceOf[itemstack] =>
+              val item = i.asInstanceOf[itemstack]
+              val newitemstack = new ItemStack(item.m,amt*item.a)
+              val unallocated = playerinv.addItem(newitemstack)
+              unallocated
+          })
+          val totalunallocated = unallocatedMaps
+            .map(x => x.values().toArray().asInstanceOf[Array[ItemStack]])
+            .flatMap(x => x)
+            .map(i => Fill(itemstack(i.getType,i.getAmount),i.getAmount))
+              .groupBy(_.p)
+              .map({
+                case (_,fills) => fills.foldLeft(fills.head)((a,c) => Fill(a.p,a.amt + c.amt))
+              }).toSeq
+            addEscrow(esc.updated(plyr.getUniqueId(),totalunallocated))
+          "Enjoy your items"
         }
         case _ => "no matching command"
       }

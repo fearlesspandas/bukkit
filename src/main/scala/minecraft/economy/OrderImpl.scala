@@ -94,6 +94,28 @@ object OrderImpl {
     OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal.toString()
   }
 
+  def addOrder(o:order): String ={
+    try{
+      OrderImpl.dat = OrderImpl.dat
+        .flatCalc[matching,order,(order,Seq[order])](o)
+        .flatCalc[orderbook,order,Map[Any,Seq[order]]](o)
+        //.calc[escrowtype,escrow]
+        .flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(ADD(),o))
+      "Order Placed"
+    }catch{
+      case e:Exception => {
+        e.printStackTrace()
+        "Something failed, order not placed"
+      }
+    }
+  }
+
+  def addEscrow(e:Map[Any,Seq[Fill]]) = {
+    OrderImpl.dat = OrderImpl.dat.flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(INJECT(e),null))
+  }
+
+  def getEscrow() = OrderImpl.dat.fetch[escrowtype,escrow].typedInitVal(null)
+
   def main(args: Array[String]): Unit = {
     val neworder = order(it,mat,20,"me")
     val neworder2 = order(it,mat,20,"me2")
