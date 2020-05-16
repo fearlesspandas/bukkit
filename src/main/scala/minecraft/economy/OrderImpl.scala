@@ -10,8 +10,7 @@ import org.bukkit.inventory.ItemStack
 import scala.collection.immutable.HashMap
 import scala.io.Source
 object OrderImpl {
-  val defaultorderbookOpt = Source.fromFile("/orderdata/orders.json").getLines().toSeq.toOrderMap()
-  val defaultorderbook = if(defaultorderbookOpt.isDefined) defaultorderbookOpt.get else HashMap[Any,Seq[order]]()
+
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
     override def toString = m.toString + ":" + a
     def compareAny(that:Any): Int = {
@@ -70,10 +69,9 @@ object OrderImpl {
 //      .register[flatescrow]
   ).dataset
 
-  def initializeData = {
+  def initializeData(defaultorderbook:Map[Any,Seq[order]]) = {
     OrderImpl.dat = OrderImpl.dat.include[orderbooktype,orderbook](_ => defaultorderbook)
   }
-  initializeData
 
   def updateDataModel(o:order):Boolean = ??? //{
 
@@ -108,7 +106,9 @@ object OrderImpl {
   def getOrderbook():String = {
     OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal(null).toString()
   }
-
+  def getcurrentbook():Map[Any,Seq[order]] = {
+    OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal(null)
+  }
   def addOrder(o:order): String ={
     try{
       OrderImpl.dat = OrderImpl.dat

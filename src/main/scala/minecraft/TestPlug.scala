@@ -1,5 +1,7 @@
 package minecraft;
 
+import java.io.{FileOutputStream, PrintWriter}
+
 import Orders.Order._
 import minecraft.economy.OrderImpl
 import org.bukkit.command.{Command, CommandSender}
@@ -10,12 +12,18 @@ import org.bukkit.plugin.java.JavaPlugin
 import scala.collection.JavaConverters._
 import minecraft.economy.OrderImpl._
 import minecraft.playerio.OrderParser
+
+import scala.collection.immutable.HashMap
+import scala.io.Source
 class Minecap extends JavaPlugin{
 
 
 
   override def onEnable() {
 		getLogger().info("Enabling Typical Order Matching System!");
+    val defaultorderbookOpt = Source.fromFile("plugins/orderdata/orders.json").getLines().toSeq.toOrderMap()
+    val defaultorderbook = if(defaultorderbookOpt.isDefined) defaultorderbookOpt.get else HashMap[Any,Seq[order]]()
+    OrderImpl.initializeData(defaultorderbook)
 //    val server = Bukkit.getServer()
 //    val escrowraw= Source.fromFile(OrderBookConstants.escrowDataLoc).getLines.toArray
 //    escrowraw.foreach( e => {
@@ -28,6 +36,16 @@ class Minecap extends JavaPlugin{
 
 	override def onDisable() {
 		getLogger().info("Shutting down Typical Order Matching System");
+    val outpath = "plugins/orderdata/orders.json"
+    val res = getcurrentbook().jsonMap()
+    val append = false
+    try{
+      val pw = new PrintWriter(new FileOutputStream(outpath,append))
+      if (append) pw.append(res) else pw.write(res)
+      pw.close()
+    }catch{
+      case e:Exception => e.printStackTrace()
+    }
 //    val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
 //      val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
 //      val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
