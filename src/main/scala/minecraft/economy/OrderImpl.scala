@@ -9,7 +9,6 @@ import org.bukkit.inventory.ItemStack
 
 object OrderImpl {
 
-  class unitSell extends order(it,mat,10,"me")
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
     override def toString = m.toString + ":" + a
     def compareAny(that:Any): Int = {
@@ -104,7 +103,8 @@ object OrderImpl {
       src
       .flatCalc[matching,order,(order,Seq[order])](ord)
       .flatCalc[orderbook,order,Map[Any,Seq[order]]](ord)
-      .flatCalc[escrow,order,Map[Any,Seq[Fill]]](ord)
+      //.calc[escrowtype,escrow]
+      .flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(ADD(),ord))
     )
     println("New orderbook: " + updatedbook.fetch[orderbooktype,orderbook].typedInitVal(null))
     println("Escrow:" + updatedbook.fetch[escrowtype,escrow].typedInitVal(null))
