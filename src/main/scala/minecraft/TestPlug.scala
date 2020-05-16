@@ -68,7 +68,7 @@ class Minecap extends JavaPlugin{
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.remaining)
 
                         if (hasEscrow) {
-                          ""
+                          val inv = plyr.getInventory
                         }else s"Not enough ${o.i.m} in inventory to fill order"
                     }
                     case Right(_:order) =>{

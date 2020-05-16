@@ -42,12 +42,14 @@ object OrderParser {
       None
 
     }
+
+  def fromStringArgs(args:Array[String]):Option[order] = ???
   //def fromArgs[material,itemstack](args:Array[String]):Option[order[material,itemstack]] = ???
 
   def main(args:Array[String]):Unit = {
     import Typical.implicits.implicits._
     val str = "1: arrow => dirt # 5"//.replace(" ","")
-    val str2 = "dirt => diamond:20 # 100".replace(" ","")
+    val str2 = "dirt => diamond  : 20 # 100".replace(" ","")
     println("running:" + str)
     println(unitsell.toString())
     println(unitbuy.findAllIn(str).mkString(""))
