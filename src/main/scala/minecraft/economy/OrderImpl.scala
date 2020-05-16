@@ -7,8 +7,11 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
+import scala.collection.immutable.HashMap
+import scala.io.Source
 object OrderImpl {
-
+  val defaultorderbookOpt = Source.fromFile("/orderdata/orders.json").getLines().toSeq.toOrderMap()
+  val defaultorderbook = if(defaultorderbookOpt.isDefined) defaultorderbookOpt.get else HashMap[Any,Seq[order]]()
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
     override def toString = m.toString + ":" + a
     def compareAny(that:Any): Int = {
@@ -57,7 +60,7 @@ object OrderImpl {
   val it2 = itemstack(diamond,5)
   val mat = material(Material.getMaterial("DIRT"))
   var dat = data[
-    orderbook with matching with escrow //with flatbook with flatescrow
+    orderbook with matching with escrow
   ](
     myprovider
       .register[orderbook]
@@ -67,6 +70,10 @@ object OrderImpl {
 //      .register[flatescrow]
   ).dataset
 
+  def initializeData = {
+    OrderImpl.dat = OrderImpl.dat.include[orderbooktype,orderbook](_ => defaultorderbook)
+  }
+  initializeData
 
   def updateDataModel(o:order):Boolean = ??? //{
 
@@ -86,12 +93,20 @@ object OrderImpl {
     }
     def jsonMap():String = jsonMap(m)
   }
- implicit class Deserializer(s:String) {
-   def toMap[A,B]():Option[Map[A,B]] = ???
+ implicit class Deserializer(orderdata:Seq[String]) {
+   import net.liftweb.json._
+   def toOrderMap():Option[Map[Any,Seq[order]]] = {
+     implicit val formats = DefaultFormats
+     Some(
+       orderdata
+       .map(parse(_).extract[order])
+       .groupBy(_.owner)
+     )
+   }
  }
 
   def getOrderbook():String = {
-    OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal.toString()
+    OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal(null).toString()
   }
 
   def addOrder(o:order): String ={

@@ -10,7 +10,6 @@ import org.bukkit.plugin.java.JavaPlugin
 import scala.collection.JavaConverters._
 import minecraft.economy.OrderImpl._
 import minecraft.playerio.OrderParser
-
 class Minecap extends JavaPlugin{
 
 
