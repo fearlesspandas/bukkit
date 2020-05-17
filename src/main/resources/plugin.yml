@@ -18,3 +18,18 @@ commands:
        usage: /<command>
        permission: minecap.escrow
        permission-message: You don't have <permission>
+    claim:
+      description: This is a demo command.
+      usage: /<command>
+      permission: minecap.claim
+      permission-message: You don't have <permission>
+    fullbook:
+      description: This is a demo command.
+      usage: /<command>
+      permission: minecap.fullbook
+      permission-message: You don't have <permission>
+    market:
+      description: This is a demo command.
+      usage: /<command>
+      permission: minecap.market
+      permission-message: You don't have <permission>

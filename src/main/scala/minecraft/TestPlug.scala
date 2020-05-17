@@ -12,16 +12,19 @@ import org.bukkit.plugin.java.JavaPlugin
 import scala.collection.JavaConverters._
 import minecraft.economy.OrderImpl._
 import minecraft.playerio.OrderParser
+import org.bukkit.Material
 
 import scala.collection.immutable.HashMap
 import scala.io.Source
+import scala.collection.JavaConverters._
+
 class Minecap extends JavaPlugin{
 
 
 
   override def onEnable() {
 		getLogger().info("Enabling Typical Order Matching System!");
-    val defaultorderbookOpt = Source.fromFile("plugins/orderdata/orders.json").getLines().toSeq.toOrderMap()
+    val defaultorderbookOpt = Source.fromFile("plugins/orderdata/orders.json").getLines().filter(l => l !=null && l != "" && l != "\n").toSeq.toOrderMap()
     val defaultorderbook = if(defaultorderbookOpt.isDefined) defaultorderbookOpt.get else HashMap[Any,Seq[order]]()
     OrderImpl.initializeData(defaultorderbook)
 //    val server = Bukkit.getServer()
@@ -83,16 +86,10 @@ class Minecap extends JavaPlugin{
                     case Left(_:order) => {
                         val o = x.left.get
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.remaining)
-
                         if (hasEscrow) {
                           val currinv = plyr.getInventory().getContents()
-                          val (_,updatedInv) = currinv.foldLeft((o.remaining,Array[ItemStack]()))( (acc,curr) => {
-                            val (need,inv) = acc
-                            if(curr != null && curr.getType() == o.i.m && need > 0) (need - curr.getAmount(),inv :+ new ItemStack(curr.getType(),scala.math.max(curr.getAmount() - need,0)))
-                            else if(curr == null)(need,inv)
-                            else (need,inv :+ curr )
-                          } )
-                          plyr.getInventory().setContents(updatedInv)
+                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
+                          plyr.getInventory().removeItem(totalitems)
                           plyr.updateInventory()
                           addOrder(o)
                         }else s"Not enough ${o.i.m} in inventory to fill order"
@@ -100,16 +97,9 @@ class Minecap extends JavaPlugin{
                     case Right(_:order) =>{
                         val o = x.right.get
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.i.a * o.remaining)
-
                         if (hasEscrow) {
-                          val currinv = plyr.getInventory().getContents()
-                          val (_,updatedInv) = currinv.foldLeft((o.i.a*o.remaining,Array[ItemStack]()))( (acc,curr) => {
-                            val (need,inv) = acc
-                            if(curr != null && curr.getType() == o.i.m && need > 0) (need - curr.getAmount(),inv :+ new ItemStack(curr.getType(),scala.math.max(curr.getAmount() - need,0)))
-                            else if(curr == null)(need,inv)
-                            else (need,inv :+ curr )
-                          } )
-                          plyr.getInventory().setContents(updatedInv)
+                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
+                          plyr.getInventory().removeItem(totalitems)
                           plyr.updateInventory()
                           addOrder(o)
                         }else s"Not enough ${o.i.m} in inventory to fill order"
@@ -129,8 +119,16 @@ class Minecap extends JavaPlugin{
         case "browse" => {
           getOrderbook()
         }
+        case "fullbook" => {
+          getcurrentbook().toString
+        }
+        case "market" => {
+          val input = args(0).toUpperCase()
+          val book = getcurrentbook()
+          book.values.flatMap(x => x).filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) ).toString
+        }
         case "escrow" => {
-          ""//getEscrow(player(plyr.getUniqueId().toString,plyr))
+          getEscrow().getOrElse(plyr.getUniqueId.toString,Seq()).toString
         }
         case "claim" => {
           val playerinv = plyr.getInventory()
@@ -146,8 +144,8 @@ class Minecap extends JavaPlugin{
               val unallocated = playerinv.addItem(newitemstack)
               unallocated
           })
-          val totalunallocated = unallocatedMaps
-            .map(x => x.values().toArray().asInstanceOf[Array[ItemStack]])
+          val totalunallocated = unallocatedMaps.map(x => x.asScala)
+            .map(x => x.values)
             .flatMap(x => x)
             .map(i => Fill(itemstack(i.getType,i.getAmount),i.getAmount))
               .groupBy(_.p)
