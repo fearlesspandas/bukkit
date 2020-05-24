@@ -1,16 +1,21 @@
 package minecraft.economy
 import Orders.Order._
 import Typical.core.Typeable.{InitialType, dataset}
-import Typical.impl.{data, myprovider, recSim}
+import Typical.impl.{baseprovider, data}
 import Typical.implicits.implicits._
 import org.bukkit.Material
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
 import scala.collection.immutable.HashMap
 import scala.io.Source
 object OrderImpl {
-
+  case class enchantment(e:Enchantment,lvl:Int) extends GloballyOrdered[enchantment]{
+    override def compareAny(that: Any): Int = that match{
+      case en:Enchantment if (en.getKey == e.getKey && en.getItemTarget == e.getItemTarget) => 0
+    }
+  }
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
     override def toString = m.toString + ":" + a
     def toItemstack = this.asInstanceOf[ItemStack]
@@ -64,7 +69,7 @@ object OrderImpl {
   var dat = data[
     orderbook with matching with escrow
   ](
-    myprovider
+    baseprovider
       .register[orderbook]
       .register[escrow]
       .register[matching]
@@ -135,19 +140,22 @@ object OrderImpl {
 
   def getOrderbook():String = {
     case class plyrorder(i:GloballyOrdered[_],p:GloballyOrdered[_],remaining:Int)
-    val res = OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal(null).values.flatMap(x => x).filter(_.remaining>0).foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
+    val res = OrderImpl.dat.fetch[orderbooktype,orderbook].value(null)
+      .values
+      .flatMap(x => x)
+      .filter(_.remaining>0)
+      .foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
     pretty(res)
   }
   def pretty(s:String) = s.replace("LEGACY_","")
   def getcurrentbook():Map[Any,Seq[order]] = {
-    OrderImpl.dat.fetch[orderbooktype,orderbook].typedInitVal(null)
+    OrderImpl.dat.fetch[orderbooktype,orderbook].value(null)
   }
   def addOrder(o:order): String ={
     try{
       OrderImpl.dat = OrderImpl.dat
         .flatCalc[matching,order,(order,Seq[order])](o)
         .flatCalc[orderbook,order,Map[Any,Seq[order]]](o)
-        //.calc[escrowtype,escrow]
         .flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(ADD(),o))
       "Order Placed"
     }catch{
@@ -159,14 +167,14 @@ object OrderImpl {
   }
 
   def addEscrow(e:Map[Any,Seq[Fill]]) = {
-    OrderImpl.dat = OrderImpl.dat.flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(INJECT(e),null))
+    OrderImpl.dat = OrderImpl.dat.flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(INJECT[Map[Any,Seq[Fill]]](e),null))
   }
 
   def getmatchbook(o:order) = {
-    val res = OrderImpl.dat.fetch[matchtype,matching].typedInitVal(o).toString()
+    val res = OrderImpl.dat.fetch[matchtype,matching].value(o).toString()
     pretty(res)
   }
-  def getEscrow() = OrderImpl.dat.fetch[escrowtype,escrow].typedInitVal(null)
+  def getEscrow() = OrderImpl.dat.fetch[escrowtype,escrow].value(null)
 
   def main(args: Array[String]): Unit = {
     val neworder = order(it,mat,20,"me")
@@ -180,8 +188,8 @@ object OrderImpl {
       //.calc[escrowtype,escrow]
       .flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(ADD(),ord))
     )
-    println("New orderbook: " + updatedbook.fetch[orderbooktype,orderbook].typedInitVal(null))
-    println("Escrow:" + updatedbook.fetch[escrowtype,escrow].typedInitVal(null))
+    println("New orderbook: " + updatedbook.fetch[orderbooktype,orderbook].value(null))
+    println("Escrow:" + updatedbook.fetch[escrowtype,escrow].value(null))
 
 
   }

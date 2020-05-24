@@ -7,3 +7,6 @@ libraryDependencies ++= Seq("org.spigotmc" % "spigot-api" % "1.15.1-R0.1-SNAPSHO
 
 // https://mvnrepository.com/artifact/net.liftweb/lift-json
 libraryDependencies += "net.liftweb" %% "lift-json" % "3.4.1"
+
+// https://mvnrepository.com/artifact/com.fasterxml.jackson.module/jackson-module-scala
+libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.11.0"

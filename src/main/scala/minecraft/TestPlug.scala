@@ -27,14 +27,6 @@ class Minecap extends JavaPlugin{
     val defaultorderbookOpt = Source.fromFile("plugins/orderdata/orders.json").getLines().filter(l => l !=null && l != "" && l != "\n").toSeq.toOrderMap()
     val defaultorderbook = if(defaultorderbookOpt.isDefined) defaultorderbookOpt.get else HashMap[Any,Seq[order]]()
     OrderImpl.initializeData(defaultorderbook)
-//    val server = Bukkit.getServer()
-//    val escrowraw= Source.fromFile(OrderBookConstants.escrowDataLoc).getLines.toArray
-//    escrowraw.foreach( e => {
-//      val args = e.split(",")
-//      val player = server.getPlayer(UUID.fromString(args(0)))
-//      val itemstack = new ItemStack(Material.getMaterial(args(1)), args(2).toInt)
-//      escrowIds.put(player,escrowIds.getOrElse(player,Array[ItemStack]()) :+ itemstack)
-//    })
 	}
 
 	override def onDisable() {
@@ -49,23 +41,16 @@ class Minecap extends JavaPlugin{
     }catch{
       case e:Exception => e.printStackTrace()
     }
-//    val newEscrowData = escrowIds.keySet.foldLeft("")( (acc,p) => {
-//      val itemarray = escrowIds.getOrElse(p,Array[ItemStack]())
-//      val newplayerentry = itemarray.foldLeft("")( (acc,curr) => {
-//        val newentry = p.getUniqueId() + "," + curr.getType() + "," + curr.getAmount() + "\n"
-//        acc + newentry
-//      })
-//      acc + newplayerentry
-//    })
-//    val fw = new FileWriter(OrderBookConstants.escrowDataLoc)
-//    fw.write(newEscrowData)
-//    fw.close()
 	}
 
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
       val response = cmd.getName() match {
         case "$" => {
-            return Array("What you want "+ OrderParser.mapdelim + " What you're offering","<amount>" + OrderParser.voldelim+ "<item> "+ OrderParser.mapdelim +" <item>","<item> "+ OrderParser.mapdelim +" <amount>" + OrderParser.voldelim+ "<item>").toBuffer.asJava
+            return Array(
+              "What you want "+ OrderParser.mapdelim + " What you're offering",
+              "<amount>" + OrderParser.quantitydelim+ "<item> "+ OrderParser.mapdelim + s" <item> ${OrderParser.voldelim} <num_orders>",
+              "<item> "+ OrderParser.mapdelim +" <amount>" + OrderParser.quantitydelim + s"<item> ${OrderParser.voldelim} <num_orders>"
+            ).toBuffer.asJava
         }
         case _ => Array[String]().toBuffer.asJava
     }
@@ -125,7 +110,10 @@ class Minecap extends JavaPlugin{
         case "market" => {
           val input = args(0).toUpperCase()
           val book = getcurrentbook()
-          book.values.flatMap(x => x).filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) ).toString
+          book.values.flatMap(x => x)
+            .filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) )
+            .filter(_.remaining>0).foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
+            .toString
         }
         case "escrow" => {
           getEscrow().getOrElse(plyr.getUniqueId.toString,Seq()).toString
@@ -152,7 +140,10 @@ class Minecap extends JavaPlugin{
               .map({
                 case (_,fills) => fills.foldLeft(fills.head)((a,c) => Fill(a.p,a.amt + c.amt))
               }).toSeq
-            addEscrow(esc.updated(plyr.getUniqueId(),totalunallocated))
+            println(s"totalunallocated:$totalunallocated")
+            val updatedescrow = esc.updated(plyr.getUniqueId().toString(),totalunallocated)
+            println(s"UpdatedEscrow:$updatedescrow")
+            addEscrow(updatedescrow)
           "Enjoy your items"
         }
         case _ => "no matching command"
