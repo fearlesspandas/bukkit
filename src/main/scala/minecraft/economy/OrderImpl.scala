@@ -101,14 +101,18 @@ object OrderImpl {
     def jsonMap():String = jsonMap(m)
   }
  implicit class Deserializer(orderdata:Seq[String]) {
+   import java.lang.reflect.{Type, ParameterizedType}
+   import com.fasterxml.jackson.databind.ObjectMapper
+   import com.fasterxml.jackson.module.scala.DefaultScalaModule
+   import com.fasterxml.jackson.annotation.JsonProperty;
+   import com.fasterxml.jackson.core.`type`.TypeReference;
 
-   import net.liftweb.json._
    def toOrderMap():Option[Map[Any,Seq[order]]] = {
-     implicit val formats = DefaultFormats
+      val mapper = new ObjectMapper()
      try{
        Some(
          orderdata
-           .map(parse(_).extract[raworder])
+           .map(mapper.readValue(_,classOf[raworder]))
            .map(raw => raw.buyOrSell.toUpperCase() match {
              case "UNIT_BUY" =>
                {
