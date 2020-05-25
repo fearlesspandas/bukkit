@@ -3,6 +3,7 @@ import Orders.Order._
 import Typical.core.Typeable.{InitialType, dataset}
 import Typical.impl.{baseprovider, data}
 import Typical.implicits.implicits._
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
@@ -10,7 +11,19 @@ import org.bukkit.inventory.ItemStack
 
 import scala.collection.immutable.HashMap
 import scala.io.Source
+import java.lang.reflect.{ParameterizedType, Type}
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.{DefaultScalaModule, ScalaObjectMapper}
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.core.`type`.TypeReference;
+
 object OrderImpl {
+
+  val mapper = new ObjectMapper() with ScalaObjectMapper
+  mapper.registerModule(DefaultScalaModule)
+
+
   case class enchantment(e:Enchantment,lvl:Int) extends GloballyOrdered[enchantment]{
     override def compareAny(that: Any): Int = that match{
       case en:Enchantment if (en.getKey == e.getKey && en.getItemTarget == e.getItemTarget) => 0
@@ -83,8 +96,18 @@ object OrderImpl {
 
   def updateDataModel(o:order):Boolean = ??? //{
 
-  case class raworder (buyOrSell:String,price:String,item:String,vol:Int,remaining:Int,owner:String){
-    def toJsonString = s"{ 'buyOrSell': '$buyOrSell','price': '$price','item': '$item','vol': $vol,'remaining': $remaining }"
+  @JsonDeserialize(as = classOf[raworder])
+  case class raworder (
+                       @JsonProperty("buyOrSell") buyOrSell:String,
+                        @JsonProperty("price") price:String,
+                        @JsonProperty("item") item:String,
+                        @JsonProperty("vol") vol:Int,
+                        @JsonProperty("remaining") remaining:Int,
+                        @JsonProperty("owner") owner:String
+                      ){
+    def toJsonString = s"""{ "buyOrSell": "$buyOrSell","price": "$price","item": "$item","vol": $vol,"remaining": $remaining }"""
+    def apply():raworder = null
+    def apply(buyOrSell: String, price: String, item: String, vol: Int, remaining: Int, owner: String): raworder = new raworder(buyOrSell, price, item, vol, remaining, owner)
   }
   implicit class MapSerializer(m:Map[Any,Seq[order]]) {
     def serializeOrder(o:order) = (o.p,o.i) match {
@@ -101,14 +124,9 @@ object OrderImpl {
     def jsonMap():String = jsonMap(m)
   }
  implicit class Deserializer(orderdata:Seq[String]) {
-   import java.lang.reflect.{Type, ParameterizedType}
-   import com.fasterxml.jackson.databind.ObjectMapper
-   import com.fasterxml.jackson.module.scala.DefaultScalaModule
-   import com.fasterxml.jackson.annotation.JsonProperty;
-   import com.fasterxml.jackson.core.`type`.TypeReference;
 
    def toOrderMap():Option[Map[Any,Seq[order]]] = {
-      val mapper = new ObjectMapper()
+
      try{
        Some(
          orderdata
@@ -148,6 +166,8 @@ object OrderImpl {
       .values
       .flatMap(x => x)
       .filter(_.remaining>0)
+      .toSeq
+      .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
       .foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
     pretty(res)
   }

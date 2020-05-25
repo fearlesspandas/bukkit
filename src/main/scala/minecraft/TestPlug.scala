@@ -52,6 +52,10 @@ class Minecap extends JavaPlugin{
               "<item> "+ OrderParser.mapdelim +" <amount>" + OrderParser.quantitydelim + s"<item> ${OrderParser.voldelim} <num_orders>"
             ).toBuffer.asJava
         }
+        case "market" => Material.values()
+          .filter(_.toString.contains(args(0)))
+          .map(_.toString)
+          .toBuffer.asJava
         case _ => Array[String]().toBuffer.asJava
     }
     return response
@@ -102,6 +106,7 @@ class Minecap extends JavaPlugin{
           }
         }//todo implement pagination on results
         case "browse" => {
+          """--------------ALL ORDERS-----------------""" +
           getOrderbook()
         }
         case "fullbook" => {
@@ -110,13 +115,20 @@ class Minecap extends JavaPlugin{
         case "market" => {
           val input = args(0).toUpperCase()
           val book = getcurrentbook()
+          s"""---------$input MARKET ORDERS----------- """ +
           book.values.flatMap(x => x)
             .filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) )
+            .toSeq
+            .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
             .filter(_.remaining>0).foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
             .toString
         }
         case "escrow" => {
-          getEscrow().getOrElse(plyr.getUniqueId.toString,Seq()).toString
+          s""" ------Items pending----- do /claim to retrieve------""" +
+          getEscrow().getOrElse(plyr.getUniqueId.toString,Seq())
+            .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0)
+            .foldLeft("")((acc,curr) => acc + s"\nItem:${curr.p},Remaining:${curr.amt}")
+            .toString
         }
         case "claim" => {
           val playerinv = plyr.getInventory()
