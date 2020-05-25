@@ -46,11 +46,26 @@ class Minecap extends JavaPlugin{
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
       val response = cmd.getName() match {
         case "$" => {
-            return Array(
-              "What you want "+ OrderParser.mapdelim + " What you're offering",
-              "<amount>" + OrderParser.quantitydelim+ "<item> "+ OrderParser.mapdelim + s" <item> ${OrderParser.voldelim} <num_orders>",
-              "<item> "+ OrderParser.mapdelim +" <amount>" + OrderParser.quantitydelim + s"<item> ${OrderParser.voldelim} <num_orders>"
-            ).toBuffer.asJava
+//          val flatargs = args.foldLeft("")(_ + _ )
+//          flatargs match {
+//            case f if f.contains(OrderParser.quantitydelim) && !f.contains(OrderParser) =>
+//            case f if f.contains(OrderParser.quantitydelim) && f.contains(OrderParser) =>
+//            case f if f.contains(OrderParser.mapdelim) =>
+//            case f if f.contains(OrderParser.voldelim) =>
+//            case _ => Material.values.filter(_.toString.contains(args(0))).toSeq
+//          }
+//          Material.values()
+//            .filter(_.toString.contains(args(0)))
+//            .map(mat =>
+              Seq(
+                "What you want "+ OrderParser.mapdelim + " What you're offering",
+                "To place K orders to trade <N> <ask_item> for 1 <bid_item>, do--- N " + OrderParser.quantitydelim+ " ask_item "+ OrderParser.mapdelim + s" bid_item ${OrderParser.voldelim} K",
+                "To place K orders to trade 1 <ask_item> for <N> <bid_item>, do--- ask_item "+ OrderParser.mapdelim + " N " + OrderParser.quantitydelim + s" bid_item ${OrderParser.voldelim} K"
+              )
+//            )
+//            .flatMap(x => x)
+            .toBuffer.asJava
+
         }
         case "market" => Material.values()
           .filter(_.toString.contains(args(0)))
@@ -68,12 +83,10 @@ class Minecap extends JavaPlugin{
         //ToDo Errors: No @
         case "$" => {
           try {
-            val nextOrder = OrderParser.fromArgs(player(plyr.getUniqueId().toString,plyr),args)
+            val nextOrder = OrderParser.fromStringArgs(player(plyr.getUniqueId().toString,plyr),args)
             nextOrder match{
-              case Some(x:Either[OrderParser.unitsellorder,OrderParser.unitbuyorder]) => {
-                  x match {
-                    case Left(_:order) => {
-                        val o = x.left.get
+              case Some(x) => {
+                        val o = x
                         val hasEscrow = plyr.getInventory.contains(o.i.m,o.remaining)
                         if (hasEscrow) {
                           val currinv = plyr.getInventory().getContents()
@@ -82,19 +95,19 @@ class Minecap extends JavaPlugin{
                           plyr.updateInventory()
                           addOrder(o)
                         }else s"Not enough ${o.i.m} in inventory to fill order"
-                    }
-                    case Right(_:order) =>{
-                        val o = x.right.get
-                        val hasEscrow = plyr.getInventory.contains(o.i.m,o.i.a * o.remaining)
-                        if (hasEscrow) {
-                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
-                          plyr.getInventory().removeItem(totalitems)
-                          plyr.updateInventory()
-                          addOrder(o)
-                        }else s"Not enough ${o.i.m} in inventory to fill order"
-                    }
+
+//                    case Right(_:order) =>{
+//                        val o = x.right.get
+//                        val hasEscrow = plyr.getInventory.contains(o.i.m,o.i.a * o.remaining)
+//                        if (hasEscrow) {
+//                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
+//                          plyr.getInventory().removeItem(totalitems)
+//                          plyr.updateInventory()
+//                          addOrder(o)
+//                        }else s"Not enough ${o.i.m} in inventory to fill order"
+//                    }
                   }
-              }
+
               case _ => "Order could not be processed from args"
             }
           }catch{
@@ -115,20 +128,22 @@ class Minecap extends JavaPlugin{
         case "market" => {
           val input = args(0).toUpperCase()
           val book = getcurrentbook()
-          s"""---------$input MARKET ORDERS----------- """ +
+          val res = s"""---------$input MARKET ORDERS----------- """ +
           book.values.flatMap(x => x)
             .filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) )
             .toSeq
             .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
-            .filter(_.remaining>0).foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
+            .foldLeft("")((acc,curr) => acc + s"\n ${curr.i} for ${curr.p} Remaining:${curr.remaining}")
             .toString
+          pretty(res)
         }
         case "escrow" => {
-          s""" ------Items pending----- do /claim to retrieve------""" +
+          val res = s""" ------Items pending----- do /claim to retrieve------""" +
           getEscrow().getOrElse(plyr.getUniqueId.toString,Seq())
             .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0)
             .foldLeft("")((acc,curr) => acc + s"\nItem:${curr.p},Remaining:${curr.amt}")
             .toString
+          pretty(res)
         }
         case "claim" => {
           val playerinv = plyr.getInventory()

@@ -30,7 +30,7 @@ object OrderImpl {
     }
   }
   case class itemstack(m:Material,a:Int) extends ItemStack(m,a) with GloballyOrdered[itemstack]{
-    override def toString = m.toString + ":" + a
+    override def toString = m.toString + "x" + a
     def toItemstack = this.asInstanceOf[ItemStack]
     def compareAny(that:Any): Int = {
       that match {
@@ -65,7 +65,7 @@ object OrderImpl {
         case  _=> -1
       }
     }
-    override def toString = s"$m:1"
+    override def toString = s"${m}x1"
   }
   case class player(id:String,p:Player) extends GloballyOrdered[player]{
     override def compare(that: player): Int = {
@@ -168,7 +168,7 @@ object OrderImpl {
       .filter(_.remaining>0)
       .toSeq
       .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
-      .foldLeft("")((acc,curr) => acc + s"\nItem:${curr.i},price:${curr.p},Remaining:${curr.remaining}")
+      .foldLeft("")((acc,curr) => acc + s"\n ${curr.i} for ${curr.p} Remaining:${curr.remaining}")
     pretty(res)
   }
   def pretty(s:String) = s.replace("LEGACY_","")
