@@ -1,6 +1,7 @@
 package minecraft;
 
 import java.io.{FileOutputStream, PrintWriter}
+import java.util.UUID
 
 import Orders.Order._
 import minecraft.economy.OrderImpl
@@ -12,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import scala.collection.JavaConverters._
 import minecraft.economy.OrderImpl._
 import minecraft.playerio.OrderParser
-import org.bukkit.Material
+import org.bukkit.{Bukkit, Material}
 
 import scala.collection.immutable.HashMap
 import scala.io.Source
@@ -46,24 +47,11 @@ class Minecap extends JavaPlugin{
   override def onTabComplete(sender : CommandSender, cmd : Command, label : String, args : Array[String]) : java.util.List[String] = {
       val response = cmd.getName() match {
         case "$" => {
-//          val flatargs = args.foldLeft("")(_ + _ )
-//          flatargs match {
-//            case f if f.contains(OrderParser.quantitydelim) && !f.contains(OrderParser) =>
-//            case f if f.contains(OrderParser.quantitydelim) && f.contains(OrderParser) =>
-//            case f if f.contains(OrderParser.mapdelim) =>
-//            case f if f.contains(OrderParser.voldelim) =>
-//            case _ => Material.values.filter(_.toString.contains(args(0))).toSeq
-//          }
-//          Material.values()
-//            .filter(_.toString.contains(args(0)))
-//            .map(mat =>
               Seq(
                 "What you want "+ OrderParser.mapdelim + " What you're offering",
                 "To place K orders to trade <N> <ask_item> for 1 <bid_item>, do--- N " + OrderParser.quantitydelim+ " ask_item "+ OrderParser.mapdelim + s" bid_item ${OrderParser.voldelim} K",
                 "To place K orders to trade 1 <ask_item> for <N> <bid_item>, do--- ask_item "+ OrderParser.mapdelim + " N " + OrderParser.quantitydelim + s" bid_item ${OrderParser.voldelim} K"
               )
-//            )
-//            .flatMap(x => x)
             .toBuffer.asJava
 
         }
@@ -77,35 +65,26 @@ class Minecap extends JavaPlugin{
   }
 
 	override def onCommand(sender : CommandSender, cmd : Command, label : String, args : Array[String]):Boolean = {
-    //todo: Use conversation class to prompt for orders
     def playerCommand(plyr: Player, cmd : Command, label : String, args : Array[String]):String ={
       val response = cmd.getName() match {
-        //ToDo Errors: No @
         case "$" => {
           try {
             val nextOrder = OrderParser.fromStringArgs(player(plyr.getUniqueId().toString,plyr),args)
             nextOrder match{
               case Some(x) => {
                         val o = x
-                        val hasEscrow = plyr.getInventory.contains(o.i.m,o.remaining)
+                        val hasEscrow = plyr.getInventory.contains(o.ii.getType,o.ii.getAmount*o.remaining)
                         if (hasEscrow) {
                           val currinv = plyr.getInventory().getContents()
-                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
+                          val totalitems = new ItemStack(o.ii.getType(),o.remaining * o.ii.getAmount)
                           plyr.getInventory().removeItem(totalitems)
                           plyr.updateInventory()
-                          addOrder(o)
-                        }else s"Not enough ${o.i.m} in inventory to fill order"
-
-//                    case Right(_:order) =>{
-//                        val o = x.right.get
-//                        val hasEscrow = plyr.getInventory.contains(o.i.m,o.i.a * o.remaining)
-//                        if (hasEscrow) {
-//                          val totalitems = new ItemStack(o.i.toItemstack.getType(),o.remaining * o.i.toItemstack.getAmount)
-//                          plyr.getInventory().removeItem(totalitems)
-//                          plyr.updateInventory()
-//                          addOrder(o)
-//                        }else s"Not enough ${o.i.m} in inventory to fill order"
-//                    }
+                          val res = addOrder(o)
+                          val stats = getStats()
+                          val server = Bukkit.getServer()
+                          stats.fillOwners.foreach(ownr => server.getPlayer(UUID.fromString(ownr)).sendMessage("Some of your orders have been filled!\n do /escrow to see your new items"))
+                          res
+                        }else s"Not enough ${o.ii.getType} in inventory to fill order"
                   }
 
               case _ => "Order could not be processed from args"
@@ -128,9 +107,19 @@ class Minecap extends JavaPlugin{
         case "market" => {
           val input = args(0).toUpperCase()
           val book = getcurrentbook()
-          val res = s"""---------$input MARKET ORDERS----------- """ +
-          book.values.flatMap(x => x)
-            .filter(x => x.i.toString.contains(input) || x.p.toString.contains(input) )
+          val buyorders = book.values.flatMap(x => x)
+            .filter(x => x.i.toString.contains(input) )
+          val sellorders = book.values.flatMap(x => x)
+            .filter(x => x.p.toString.contains(input) )
+          val res = s"""---------$input MARKET ORDERS----------- """ + "\n" +
+          s"""-----Buy Orders-------""" +
+             buyorders
+            .toSeq
+            .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
+            .foldLeft("")((acc,curr) => acc + s"\n ${curr.i} for ${curr.p} Remaining:${curr.remaining}")
+            .toString + "\n" +
+          s"""-----Sell Orders------ """ +
+          sellorders
             .toSeq
             .sortWith((o1,o2) => o1.p.compareAny( o2.p) >=0 && o1.i.compareAny(o2.i) >= 0 )
             .foldLeft("")((acc,curr) => acc + s"\n ${curr.i} for ${curr.p} Remaining:${curr.remaining}")

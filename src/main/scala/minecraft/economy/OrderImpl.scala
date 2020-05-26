@@ -34,8 +34,7 @@ object OrderImpl {
     def toItemstack = this.asInstanceOf[ItemStack]
     def compareAny(that:Any): Int = {
       that match {
-        case t:itemstack => {
-          t.m match{
+        case t:itemstack => t.m match {
             case this.m => {
               t.a match{
                 case this.a => 0
@@ -45,13 +44,13 @@ object OrderImpl {
             }
             case _ => -2
           }
-        }
-        case mat:material => {
-          mat.m match{
+
+        case mat:material => mat.m match {
             case this.m if(this.a == 1) => 0
+            case this.m if(this.a < 1) => 1
             case _ => -1
           }
-        }
+
         case _ => -2
       }
     }
@@ -61,7 +60,8 @@ object OrderImpl {
     override def compareAny(that: Any): Int = {
       that match{
         case tht:material if tht.m == this.m => 0
-        case tht:itemstack if (tht.m == this.m && tht.a > 0) => 0
+        case tht:itemstack if (tht.m == this.m && tht.a == 1) => 0
+        case tht:itemstack if(tht.m == this.m && tht.a > 1) => 1
         case  _=> -1
       }
     }
@@ -80,14 +80,13 @@ object OrderImpl {
   val it2 = itemstack(diamond,5)
   val mat = material(Material.getMaterial("DIRT"))
   var dat = data[
-    orderbook with matching with escrow
+    orderbook with matching with escrow with orderstats
   ](
     baseprovider
       .register[orderbook]
       .register[escrow]
       .register[matching]
-//      .register[flatbook]
-//      .register[flatescrow]
+      .register[orderstats]
   ).dataset
 
   def initializeData(defaultorderbook:Map[Any,Seq[order]]) = {
@@ -103,9 +102,10 @@ object OrderImpl {
                         @JsonProperty("item") item:String,
                         @JsonProperty("vol") vol:Int,
                         @JsonProperty("remaining") remaining:Int,
-                        @JsonProperty("owner") owner:String
+                        @JsonProperty("owner") owner:String,
+                        @JsonProperty("vol2") vol2:Int = 0
                       ){
-    def toJsonString = s"""{ "buyOrSell": "$buyOrSell","price": "$price","item": "$item","vol": $vol,"remaining": $remaining }"""
+    def toJsonString = s"""{ "buyOrSell": "$buyOrSell","price": "$price","item": "$item","vol": $vol,"remaining": $remaining , "owner":"$owner"}"""
     def apply():raworder = null
     def apply(buyOrSell: String, price: String, item: String, vol: Int, remaining: Int, owner: String): raworder = new raworder(buyOrSell, price, item, vol, remaining, owner)
   }
@@ -113,6 +113,7 @@ object OrderImpl {
     def serializeOrder(o:order) = (o.p,o.i) match {
   case (i:itemstack,m:material) => raworder("UNIT_SELL",i.m.toString,m.m.toString,i.a,o.remaining,o.owner).toJsonString
   case (m:material,i:itemstack) => raworder("UNIT_BUY",m.m.toString,i.m.toString,i.a,o.remaining,o.owner).toJsonString
+  //case (i:itemstack,i:itemstack) => raworder("GENERAL")
 }
     def jsonMap(mm:Map[Any,Seq[order]]):String = {
       val res = mm.values.flatMap(x => x).foldLeft("")((acc,curr) => {
@@ -148,6 +149,8 @@ object OrderImpl {
                val rawmaterial = material(itemmat)
                order(rawitemstack,rawmaterial,raw.remaining,raw.owner)
              }
+//             case "GENERAL" =>
+//               val pricemat = Material.getMaterial(raw.price)
            })
            .groupBy(_.owner)
        )
@@ -181,6 +184,7 @@ object OrderImpl {
         .flatCalc[matching,order,(order,Seq[order])](o)
         .flatCalc[orderbook,order,Map[Any,Seq[order]]](o)
         .flatCalc[escrow,escrowinput, Map[Any,Seq[Fill]]](escrowinput(ADD(),o))
+        .flatCalc[orderstats,order,orderstatistics](o)
       "Order Placed"
     }catch{
       case e:Exception => {
@@ -188,6 +192,10 @@ object OrderImpl {
         "Something failed, order not placed"
       }
     }
+  }
+
+  def getStats() = {
+    OrderImpl.dat.fetch[stattype,orderstats].value(null)
   }
 
   def addEscrow(e:Map[Any,Seq[Fill]]) = {

@@ -10,7 +10,15 @@ import org.bukkit.inventory.ItemStack
 object OrderParser {
   class unitbuyorder(override val p:material,override val i:itemstack,override val remaining:Int,override val owner:String) extends order(p,i,remaining,owner)
   class unitsellorder(override val p:itemstack,override val i:material,override val remaining:Int,override val owner:String) extends order(p,i,remaining,owner)
-  class generalItemOrder(override val p:itemstack,override val i:itemstack,override val remaining:Int,override val owner:String) extends order(p,i,remaining,owner)
+  class generalItemOrder(
+                          price:Either[itemstack,material],
+                          item:Either[itemstack,material],
+                          remaining:Int,
+                          owner:String
+                        ) extends order(if(price.isLeft) price.left.get else price.right.get,if(item.isLeft) item.left.get else item.right.get,remaining,owner){
+    val pp:ItemStack = if(price.isLeft) this.p.asInstanceOf[itemstack] else this.p.asInstanceOf[material]
+    val ii:ItemStack = if(item.isLeft) this.i.asInstanceOf[itemstack] else this.i.asInstanceOf[material]
+  }
 
   val mapdelim = "=>"
   val voldelim = "N="
@@ -49,26 +57,28 @@ object OrderParser {
 
   def fromStringArgs(plyr:player,args:Array[String]):Option[generalItemOrder] = {
     val upperargs = args.map(_.toUpperCase())
-    val item1:Option[ItemStack] = upperargs match {
+    val item1:Option[Either[itemstack,material]] = upperargs match {
       case a if (a.size > 0) => upperargs(1)  match{
         case x if(x.contains(quantitydelim)) => val (matstring,itemquantity) = (x.split(quantitydelim)(0),x.split(quantitydelim)(1))
-          Some(new ItemStack(Material.getMaterial(matstring),itemquantity.toInt))
-        case _ => Some(new ItemStack(Material.getMaterial(upperargs(1)),1))
+          Some(Left(itemstack(Material.getMaterial(matstring),itemquantity.toInt)))
+        case _ => Some(Right(material(Material.getMaterial(upperargs(1)))))
     }
       case _ => None
     }
-    val item2:Option[ItemStack] = upperargs match {
+    val item2:Option[Either[itemstack,material]] = upperargs match {
       case a if (a.size > 1) => upperargs(2)  match {
         case x if(x.contains(quantitydelim)) => val (matstring,itemquantity) = (x.split(quantitydelim)(0),x.split(quantitydelim)(1))
-          Some(new ItemStack(Material.getMaterial(matstring),itemquantity.toInt))
-        case _ => Some(new ItemStack(Material.getMaterial(upperargs(2)),1))
+          Some(Left(itemstack(Material.getMaterial(matstring),itemquantity.toInt)))
+        case _ => Some(Right(material(Material.getMaterial(upperargs(2)))))
       }
       case _ => None
     }
+
+    val volume = if(upperargs.size > 3) upperargs(3).toInt else 1
     (item1,item2) match{
       case (Some(i1),Some(i2)) => upperargs (0) match{
-        case "BUY" => Some(new generalItemOrder(itemstack(i1.getType,i1.getAmount),itemstack(i2.getType,i2.getAmount),upperargs(3).toInt,plyr.id))
-        case "SELL" =>Some(new generalItemOrder(itemstack(i2.getType,i2.getAmount),itemstack(i1.getType,i1.getAmount),upperargs(3).toInt,plyr.id) )
+        case "BUY" => Some(new generalItemOrder(i1,i2,volume,plyr.id))
+        case "SELL" =>Some(new generalItemOrder(i2,i1,volume,plyr.id))
       }
       case _ => None
     }
